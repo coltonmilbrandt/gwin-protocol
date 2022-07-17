@@ -13,7 +13,7 @@ from brownie import (
 # eth_utils needs to be installed "pip3 install eth_utils"
 import eth_utils
 
-INITIAL_PRICE_FEED_VALUE = 2000000000000000000000
+INITIAL_PRICE_FEED_VALUE = 2000_000000000000000000
 DECIMALS = 18
 
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["hardhat", "development", "ganache"]
@@ -33,7 +33,8 @@ contract_to_mock = {
 def get_account(index=None, id=None):
     if index:
         return accounts[index]
-    if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS or network.show_active() in FORKED_LOCAL_ENVIRONMENTS:
+    # if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS or network.show_active() in FORKED_LOCAL_ENVIRONMENTS:
+    if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:    
         return accounts[0]
     if id:
         return accounts.load(id)
