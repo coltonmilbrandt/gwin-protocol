@@ -3,10 +3,17 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract TokenFarm is Ownable {
     // want a mapping token address -> staker address -> amount
     mapping(address => mapping(address => uint256)) public stakingBalance;
+    mapping(address => uint256) public uniqueTokensStaked;
+    // token address to token price feed address
+    mapping(address => address) public tokenPriceFeedMapping;
+    address[] public stakers;
+    address[] public allowedTokens;
+    IERC20 public gwinToken;
 
 
     // stakeTokens
@@ -15,7 +22,67 @@ contract TokenFarm is Ownable {
     // addAllowedTokens
     // getEthValue
 
-    address[] public allowedTokens;
+    // **  Staking Rewards  **
+    // 1:1 ETH per GWIN
+    // If 50 ETH and 50 DAI, and we want to reward 1 GWIN / 1 DAI
+
+    constructor(_address _gwinTokenAddress) public {
+        gwinToken = IERC20(_gwinTokenAddress);
+    }
+
+    function setPriceFeedContract(address _token, address _priceFeed) public onlyOwner {
+        // this maps the token to its corresponding price feed contract
+        tokenPriceFeedMapping[_token] = _priceFeed;
+    }
+
+    function issueTokens() public onlyOwner {
+        // Issue tokens to all stakers
+        for (
+            uint256 stakersIndex = 0; 
+            stakersIndex < stakers.length; 
+            stakersIndex++
+        ) {
+            address recipient = stakers[stakersIndex];
+            uint256 userTotalValue = getUserTotalValue(recipient);
+            // Send them a token reward based on their total value locked
+            // gwinToken.transfer(recipient, ????)
+        }
+    }
+
+    function getUserTokenValue(address _user) public view returns (uint256) {
+        uint256 totalValue = 0;
+        require(uniqueTokensStaked[_user] > 0, "No tokens staked!");
+        for (
+            uint256 allowedTokensIndex = 0;
+            allowedTokensIndex < allowedTokens.length;
+            allowedTokensIndex++
+        ){
+            totalValue = totalValue + getUserSingleTokenValue(_user, allowedTokens[allowedTokensIndex])
+        }
+    }
+
+    function getUserSingleTokenValue(address _user, address _token) public view returns (uint256) {
+        if (uniqueTokensStaked[_user] <= 0) {
+            return 0;
+        }
+        // price of the token * stakingBalance[_token][user]
+        getTokenValue(_token);
+    }
+
+    function getTokenValue(address _token) public view returns (uint256, uint256) {
+        // priceFeedAddress
+        address priceFeedAddress = tokenPriceFeedMapping[_token];
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(priceFeedAddress);
+        (
+            /*uint80 roundID*/,
+            int price,
+            /*uint startedAt*/,
+            /*uint timeStamp*/,
+            /*uint80 answeredInRound*/
+        ) = priceFeed.latestRoundData();
+        uint256 decimals = priceFeed.decimals();
+        return (uint256(price), decimals);
+    }
 
     function stakeTokens(uint256 _amount, address _token) public {
         // what tokens can they stake?
@@ -25,7 +92,18 @@ contract TokenFarm is Ownable {
         // transferFrom  --  ERC20s have transfer and transfer from. 
         // Transfer only works if you call it from the wallet that owns the token
         IERC20(_token).transferFrom(msg.sender, address(this), _amount);
+        updateUniqueTokensStaked(msg.sender, _token);
         stakingBalance[_token][msg.sender] = stakingBalance[_token][msg.sender] + _amount;
+        if (uniqueTokensStaked[msg.sender] == 1){
+            stakers.push(msg.sender);
+        }
+    }
+
+    function updateUniqueTokensStaked(address _user, address _token) internal {
+        // I feel like it should be '>=' below instead
+        if (stakingBalance[_token][_user] <= 0) {
+            uniqueTokensStaked[_user] = uniqueTokensStaked[_user] + 1;
+        }
     }
 
     function addAllowedTokens(address _token) public onlyOwner {
