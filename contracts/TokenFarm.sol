@@ -16,17 +16,17 @@ contract TokenFarm is Ownable {
     IERC20 public gwinToken;
 
 
-    // stakeTokens
-    // unStakeTokens
-    // issueTokens
-    // addAllowedTokens
-    // getEthValue
+    // stakeTokens - DONE!
+    // unStakeTokens - DONE! 
+    // issueTokens - DONE!
+    // addAllowedTokens - DONE!
+    // getEthValue - DONE!
 
     // **  Staking Rewards  **
     // 1:1 ETH per GWIN
     // If 50 ETH and 50 DAI, and we want to reward 1 GWIN / 1 DAI
 
-    constructor(_address _gwinTokenAddress) public {
+    constructor(address _gwinTokenAddress) public {
         gwinToken = IERC20(_gwinTokenAddress);
     }
 
@@ -44,12 +44,13 @@ contract TokenFarm is Ownable {
         ) {
             address recipient = stakers[stakersIndex];
             uint256 userTotalValue = getUserTotalValue(recipient);
+            gwinToken.transfer(recipient, userTotalValue);
             // Send them a token reward based on their total value locked
             // gwinToken.transfer(recipient, ????)
         }
     }
 
-    function getUserTokenValue(address _user) public view returns (uint256) {
+    function getUserTotalValue(address _user) public view returns (uint256) {
         uint256 totalValue = 0;
         require(uniqueTokensStaked[_user] > 0, "No tokens staked!");
         for (
@@ -57,8 +58,9 @@ contract TokenFarm is Ownable {
             allowedTokensIndex < allowedTokens.length;
             allowedTokensIndex++
         ){
-            totalValue = totalValue + getUserSingleTokenValue(_user, allowedTokens[allowedTokensIndex])
+            totalValue = totalValue + getUserSingleTokenValue(_user, allowedTokens[allowedTokensIndex]);
         }
+        return totalValue;
     }
 
     function getUserSingleTokenValue(address _user, address _token) public view returns (uint256) {
@@ -66,7 +68,13 @@ contract TokenFarm is Ownable {
             return 0;
         }
         // price of the token * stakingBalance[_token][user]
-        getTokenValue(_token);
+        (uint256 price, uint256 decimals) = getTokenValue(_token);
+        return (
+            // 10,000000000000000000 ETH
+            // ETH/USD --> 100,00000000 USD/ 1 ETH
+            // 10 * 100 = 1,000
+            stakingBalance[_token][_user] * price / (10**decimals)
+        );
     }
 
     function getTokenValue(address _token) public view returns (uint256, uint256) {
@@ -97,6 +105,15 @@ contract TokenFarm is Ownable {
         if (uniqueTokensStaked[msg.sender] == 1){
             stakers.push(msg.sender);
         }
+    }
+
+    // Vulnerable to Reentrancy attacks? Yeah. Probably.
+    function unstakeTokens(address _token) public {
+        uint256 balance = stakingBalance[_token][msg.sender];
+        require(balance > 0, "Staking balance cannot be less than 0");
+        IERC20(_token).transfer(msg.sender, balance);
+        stakingBalance[_token][msg.sender] = 0;
+        uniqueTokensStaked[msg.sender] = uniqueTokensStaked[msg.sender] - 1;
     }
 
     function updateUniqueTokensStaked(address _user, address _token) internal {
