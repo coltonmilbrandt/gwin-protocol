@@ -172,7 +172,7 @@ contract TokenFarm is Ownable {
     }
 
     // returns whether token is allowed
-    function tokenIsAllowed(address _token) public returns (bool) {
+    function tokenIsAllowed(address _token) public view returns (bool) {
         // Loops through the array of allowedTokens[] for length of array
         for(uint256 allowedTokensIndex=0; allowedTokensIndex < allowedTokens.length; allowedTokensIndex++){
             // If token at index matched the passed in token, return true

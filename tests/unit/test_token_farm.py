@@ -1,4 +1,3 @@
-from random import random
 from brownie import TokenFarm, GwinToken, network, exceptions
 from scripts.helpful_scripts import LOCAL_BLOCKCHAIN_ENVIRONMENTS, INITIAL_PRICE_FEED_VALUE, DECIMALS, get_account, get_contract
 from scripts.deploy import deploy_token_farm_and_gwin_token
@@ -106,5 +105,22 @@ def test_only_owner_can_add_allowed_token():
     with pytest.raises(exceptions.VirtualMachineError):
         token_farm.addAllowedTokens(gwin_ERC20.address, {"from": non_owner})
     
+def test_can_unstake_tokens(amount_staked):
+    # Arrange
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    account = get_account()
+    non_owner = get_account(index=1)
+    token_farm, gwin_ERC20 = test_stake_tokens(amount_staked)
+    token_farm.unstakeTokens(gwin_ERC20.address, {"from": account})
+    assert token_farm.stakingBalance(gwin_ERC20.address, account) == 0
+    assert token_farm.uniqueTokensStaked(account.address) == 0
 
-    
+def test_token_is_allowed():
+    # Arrange
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    # Act
+    token_farm, gwin_ERC20 = deploy_token_farm_and_gwin_token()
+    # Assert
+    assert token_farm.tokenIsAllowed(gwin_ERC20.address) == True
