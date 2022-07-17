@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-// https://youtu.be/M576WGiDBdQ?t=48594
 
 contract TokenFarm is Ownable {
     // token address -> staker address -> amount

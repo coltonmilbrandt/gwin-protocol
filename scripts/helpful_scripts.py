@@ -1,7 +1,34 @@
-from brownie import network, accounts, config
+from brownie import (
+    network,
+    accounts,
+    config,
+    interface,
+    LinkToken,
+    MockV3Aggregator,
+    MockWETH,
+    MockDAI,
+    Contract,
+)
 
-FORKED_LOCAL_ENVIRONMENTS = ["mainnet-fork", "mainnet-fork-dev"]
-LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache-local", "local-ganache"]
+# eth_utils needs to be installed "pip3 install eth_utils"
+import eth_utils
+
+INITIAL_PRICE_FEED_VALUE = 2000000000000000000000
+DECIMALS = 18
+
+NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["hardhat", "development", "ganache"]
+LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
+    "mainnet-fork",
+    "binance-fork",
+    "matic-fork",
+]
+
+contract_to_mock = {
+    "eth_usd_price_feed": MockV3Aggregator,
+    "dai_usd_price_feed": MockV3Aggregator,
+    "fau_token": MockDAI,
+    "weth_token": MockWETH,
+}
 
 def get_account(index=None, id=None):
     if index:
@@ -11,3 +38,147 @@ def get_account(index=None, id=None):
     if id:
         return accounts.load(id)
     return accounts.add(config["wallets"]["from_key"])
+
+# *args allows for any number of arguments afterward
+def encode_function_data(initializer=None, *args):
+    """Encodes the function call so we can work with an initializer
+
+    Args:
+        initializer ([brownie.network.contract.ContractTx], optional):
+        The initializer function we want to call. Example: 'box.store'.
+        Defaults to None.
+
+        args (Any, options):
+        The arguments to pass to the inititalizer function
+
+        Returns:
+        [bytes]: Return the encoded bytes.
+    
+    """
+    #  we are encoding "initializer=box.store, 1" into bytes so that our smart contracts know
+    #  which function to call. If there is no initializer or it's blank, we return an empty hex
+    #  string and our smart contract will know it is blank.
+    if len(args) == 0 or not initializer:
+        return eth_utils.to_bytes(hexstr="0x")
+    return initializer.encode_input(*args)
+
+# This function covers all the different way you might call an upgrade to your smart contract
+def upgrade(
+    account, 
+    proxy, # This is the proxy contract, it directs the actions to the right contract
+    new_implementation_address, # This is the new implementation
+    proxy_admin_contract=None, # If there is an admin contract
+    initializer=None, # like box.store
+    *args # this could be many arguments, or it could be none
+):
+    # Checks for a proxy contract
+    if proxy_admin_contract:
+        # Checks for an initializer
+        if initializer:
+            # Encode the function data
+            encoded_function_call = encode_function_data(initializer, *args)
+            # Takes the proxy_admin_contract and uses the proxyAdmin.sol to call upgrade
+            transaction = proxy_admin_contract.upgradeAndCall(
+                proxy.address,
+                new_implementation_address,
+                encoded_function_call,
+                {"from": account}
+            )
+        # If they don't have an initializer, we don't need to encode a function call
+        else:
+            # This simply upgrades it, but doesn't call
+            transaction = proxy_admin_contract.upgrade(
+                proxy.address, new_implementation_address, {"from": account}
+            )
+    # If it doesn't have a proxy admin
+    else:
+        # Check for an inititializer
+        if initializer:
+            # If there is an initializer, then we have to encode that function call
+            encoded_function_call = encode_function_data(initializer, *args)
+            # This is without the proxy_admin
+            transaction = proxy.upgradeToAndCall(
+                new_implementation_address, encoded_function_call, {"from":account}
+            )
+        # No proxy_admin and no initializer to encode a function call for
+        else: 
+            transaction = proxy.upgradeTo(new_implementation_address, {"from": account})
+    return transaction
+
+def get_contract(contract_name):
+    """If you want to use this function, go to the brownie config and add a new entry for
+    the contract that you want to be able to 'get'. Then add an entry in the in the variable 'contract_to_mock'.
+    You'll see examples like the 'link_token'.
+        This script will then either:
+            - Get a address from the config
+            - Or deploy a mock to use for a network that doesn't have it
+        Args:
+            contract_name (string): This is the name that is refered to in the
+            brownie config and 'contract_to_mock' variable.
+        Returns:
+            brownie.network.contract.ProjectContract: The most recently deployed
+            Contract of the type specificed by the dictonary. This could be either
+            a mock or the 'real' contract on a live network.
+    """
+    contract_type = contract_to_mock[contract_name]
+    if network.show_active() in NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        if len(contract_type) <= 0:
+            deploy_mocks()
+        contract = contract_type[-1]
+    else:
+        try:
+            contract_address = config["networks"][network.show_active()][contract_name]
+            contract = Contract.from_abi(
+                contract_type._name, contract_address, contract_type.abi
+            )
+        except KeyError:
+            print(
+                f"{network.show_active()} address not found, perhaps you should add it to the config or deploy mocks?"
+            )
+            print(
+                f"brownie run scripts/deploy_mocks.py --network {network.show_active()}"
+            )
+    return contract
+
+
+def fund_with_link(
+    contract_address, account=None, link_token=None, amount=1000000000000000000
+):
+    account = account if account else get_account()
+    link_token = link_token if link_token else get_contract("link_token")
+    tx = interface.LinkTokenInterface(link_token).transfer(
+        contract_address, amount, {"from": account}
+    )
+    print("Funded {}".format(contract_address))
+    return tx
+
+
+def get_verify_status():
+    verify = (
+        config["networks"][network.show_active()]["verify"]
+        if config["networks"][network.show_active()].get("verify")
+        else False
+    )
+    return verify
+
+
+def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_PRICE_FEED_VALUE):
+    """
+    Use this script if you want to deploy mocks to a testnet
+    """
+    print(f"The active network is {network.show_active()}")
+    print("Deploying Mocks...")
+    account = get_account()
+    print("Deploying Mock Link Token...")
+    link_token = LinkToken.deploy({"from": account})
+    print("Deploying Mock Price Feed...")
+    mock_price_feed = MockV3Aggregator.deploy(
+        decimals, initial_value, {"from": account}
+    )
+    print(f"Deployed to {mock_price_feed.address}")
+    print("Deploying Mock DAI...")
+    dai_token = MockDAI.deploy({"from": account})
+    print(f"Deployed to {dai_token.address}")
+    print("Deploying Mock WETH")
+    weth_token = MockWETH.deploy({"from": account})
+    print(f"Deployed to {weth_token.address}")
