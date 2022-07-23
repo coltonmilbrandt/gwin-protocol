@@ -182,4 +182,9 @@ contract TokenFarm is Ownable {
         }
         return false;
     }
+
+    // return a list of allowed token addresses
+    function getAllowedTokenArray() public view returns (address[] memory) {
+        return allowedTokens;
+    }
 }

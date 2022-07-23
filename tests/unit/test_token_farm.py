@@ -1,4 +1,6 @@
 from brownie import TokenFarm, GwinToken, network, exceptions
+from parsimonious import UndefinedLabel
+from pyparsing import null_debug_action
 from scripts.helpful_scripts import LOCAL_BLOCKCHAIN_ENVIRONMENTS, INITIAL_PRICE_FEED_VALUE, DECIMALS, get_account, get_contract
 from scripts.deploy import deploy_token_farm_and_gwin_token
 from web3 import Web3
@@ -124,3 +126,14 @@ def test_token_is_allowed():
     token_farm, gwin_ERC20 = deploy_token_farm_and_gwin_token()
     # Assert
     assert token_farm.tokenIsAllowed(gwin_ERC20.address) == True
+
+def test_return_addresses():
+    # Arrange
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    # Act
+    token_farm, gwin_ERC20 = deploy_token_farm_and_gwin_token()
+    allowed_tokens = token_farm.getAllowedTokenArray()
+    # Assert
+    assert allowed_tokens[0]
+    assert allowed_tokens[-1] == allowed_tokens[2]
