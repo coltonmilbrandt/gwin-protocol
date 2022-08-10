@@ -162,7 +162,6 @@ def get_verify_status():
     )
     return verify
 
-
 def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_PRICE_FEED_VALUE):
     """
     Use this script if you want to deploy mocks to a testnet
@@ -183,3 +182,7 @@ def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_PRICE_FEED_VALUE):
     print("Deploying Mock WETH")
     weth_token = MockWETH.deploy({"from": account})
     print(f"Deployed to {weth_token.address}")
+
+# def transfer_tokens(token, amount):
+#     tx = gwin_ERC20.transfer(token_farm.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
+#     tx.wait(1)

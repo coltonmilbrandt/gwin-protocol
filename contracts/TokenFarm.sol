@@ -79,6 +79,15 @@ contract TokenFarm is Ownable {
     }
 
     // Gets the staking value to pay out for a single token
+    function getUserSingleTokenStakedValue(address _user, address _token) public view returns (uint256) {
+        // if there is no tokens staked, return 0
+        if (uniqueTokensStaked[_user] <= 0) {
+            return 0;
+        }
+        return stakingBalance[_token][_user];
+    }
+
+    // Gets the staking value to pay out for a single token
     function getUserSingleTokenValue(address _user, address _token) public view returns (uint256) {
         // if there is no tokens staked, return 0
         if (uniqueTokensStaked[_user] <= 0) {
