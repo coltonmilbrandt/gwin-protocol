@@ -1,24 +1,5 @@
 # Gwin Protocol
 
-Gwin allows you to increase or decrease the volatility of your ETH.
+With Gwin you can increase your upside and downside exposure or reduce the volatility of your ETH.
 
-# Solidity Smart Contract
-
-Stake GWIN, wETH, or DAI on the Rinkeby testnet in order to earn GWIN tokens.
-
-# Setting Smart Contract
-
-Deploy the smart contract to your preferred test network.
-If deployed locally, you will receive test tokens automatically to your first wallet.
-
-# How to Set Up
-
-```
-brownie run scripts/deploy.py --network ganache
-```
-
-or substitute preferred network in the place of "ganache"
-
-# Front End
-
-Check out my "Gwin Front End" code in order to set up a useable front end. Change the contract addresses at "gwin-front-end/constants/contractInfo.json"
+Trying to understand complex derivatives or options calls, puts, or spreads is really out of reach for most people. But with Gwin you can simply adjust a slider that represents the exposure you want, and you’ll get to see how it measures up against a typical ETH position. Once you’ve selected what risk profile looks best for your situation, you deposit your asset and you’re on!
