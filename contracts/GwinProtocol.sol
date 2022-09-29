@@ -122,14 +122,11 @@ contract GwinProtocol is Ownable {
         (
             ,
             /*uint80 roundID*/
-            int price,
+            int price, /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
             ,
             ,
 
-        ) = /*uint startedAt*/
-            /*uint timeStamp*/
-            /*uint80 answeredInRound*/
-            priceFeed.latestRoundData();
+        ) = priceFeed.latestRoundData();
         // set number of decimals for token value
         uint256 decimals = priceFeed.decimals();
         // return token price and decimals
