@@ -15,10 +15,10 @@ def deploy_gwin_protocol_and_gwin_token():
     weth_token = get_contract("weth_token")
     fau_token = get_contract("fau_token")
 
-    gwin_protocol.interact(15)
-    my_number = gwin_protocol.viewMyNumber()
-    print("my number is... ")
-    print(my_number)
+    gwin_protocol.tempGetPrices()
+    profit = gwin_protocol.getProfit()
+    print("profit is... ")
+    print(profit)
     
     return gwin_protocol, gwin_ERC20
 

@@ -16,7 +16,8 @@ contract GwinProtocol is Ownable {
     // address[] public stakers;
     // // array of the allowed tokens
     // address[] public allowedTokens;
-    uint256 myFavoriteNumber;
+    uint256 lastEthUsd;
+    uint256 currentEthUsd;
 
     // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor
     IERC20 public gwinToken;
@@ -31,14 +32,18 @@ contract GwinProtocol is Ownable {
     // get Heated ETH balance
     // get ETH/USD price
 
-    // Interact: cEthBal, hEthBal, cEthUsdBal, hEthUsdBal, tranche, lastEthUsd, currentEthUsd
-    function interact(uint256 _num) public {
-        myFavoriteNumber = _num;
+    function tempGetPrices() public {
+        lastEthUsd = 1000;
+        currentEthUsd = 2000;
     }
 
-    function viewMyNumber() public view returns (uint256) {
-        return myFavoriteNumber;
+    function getProfit() public view returns (uint256) {
+        uint256 profit = (currentEthUsd - lastEthUsd) / lastEthUsd;
+        return profit;
     }
+
+    // Interact: cEthBal, hEthBal, cEthUsdBal, hEthUsdBal, tranche, lastEthUsd, currentEthUsd
+    function interact(uint256 _num) public {}
 
     // Pass in: address, tranche, amount, hotColdRatio, priceChange
 }
