@@ -184,5 +184,5 @@ def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_PRICE_FEED_VALUE):
     print(f"Deployed to {weth_token.address}")
 
 # def transfer_tokens(token, amount):
-#     tx = gwin_ERC20.transfer(token_farm.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
+#     tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
 #     tx.wait(1)
