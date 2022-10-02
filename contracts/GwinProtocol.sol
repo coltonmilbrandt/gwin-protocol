@@ -18,6 +18,7 @@ contract GwinProtocol is Ownable {
     // address[] public allowedTokens;
     uint256 lastEthUsd;
     uint256 currentEthUsd;
+    uint32 bp = 10000;
 
     // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor
     IERC20 public gwinToken;
@@ -34,11 +35,11 @@ contract GwinProtocol is Ownable {
 
     function tempGetPrices() public {
         lastEthUsd = 1000;
-        currentEthUsd = 2000;
+        currentEthUsd = 1100;
     }
 
     function getProfit() public view returns (uint256) {
-        uint256 profit = (currentEthUsd - lastEthUsd) / lastEthUsd;
+        uint256 profit = ((currentEthUsd - lastEthUsd) * bps) / lastEthUsd;
         return profit;
     }
 

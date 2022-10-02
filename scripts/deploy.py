@@ -16,9 +16,11 @@ def deploy_gwin_protocol_and_gwin_token():
     fau_token = get_contract("fau_token")
 
     gwin_protocol.tempGetPrices()
+
     profit = gwin_protocol.getProfit()
     print("profit is... ")
     print(profit)
+    print('basis points ^')
     
     return gwin_protocol, gwin_ERC20
 
