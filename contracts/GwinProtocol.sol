@@ -82,36 +82,82 @@ contract GwinProtocol is Ownable {
         return allocationDifference;
     }
 
+    function deposit() public {
+        interact();
+    }
+
+    struct CalcInfo {
+        uint256 currentEthUsd;
+        int256 ethUsdProfit;
+        int256 cooledAllocationDiff;
+        int256 heatedAllocationDiff;
+        int256 absHeatedAllocationDiff;
+        int256 absCooledAllocationDiff;
+        int256 minAbsAllocation;
+        int256 nonNaturalDifference;
+        uint256 percentCooledTranche;
+        uint256 nonNaturalMultiplier;
+        uint256 adjNonNaturalDiff;
+        uint256 absAllocationTotal;
+        int256 cooledAllocation;
+        int256 heatedAllocation;
+        uint256 totalLockedUsd;
+    }
+
     // Interact: cEthBal, hEthBal, cEthUsdBal, hEthUsdBal, tranche, lastEthUsd, currentEthUsd
-    function interact(bool _isCooled) public returns (uint256) {
-        uint256 currentEthUsd = getCurrentEthUsd();
-        int256 ethUsdProfit = getProfit(currentEthUsd);
-        int256 cooledAllocationDiff = trancheSpecificCalcs(
+    function interact() internal returns (uint256) {
+        CalcInfo memory calc;
+        calc.currentEthUsd = getCurrentEthUsd();
+        calc.ethUsdProfit = getProfit(calc.currentEthUsd);
+        calc.cooledAllocationDiff = trancheSpecificCalcs(
             true,
-            ethUsdProfit,
-            currentEthUsd
+            calc.ethUsdProfit,
+            calc.currentEthUsd
         );
-        int256 heatedAllocationDiff = trancheSpecificCalcs(
+        calc.heatedAllocationDiff = trancheSpecificCalcs(
             false,
-            ethUsdProfit,
-            currentEthUsd
+            calc.ethUsdProfit,
+            calc.currentEthUsd
         );
-        int256 absHeatedAllocationDiff = abs(heatedAllocationDiff);
-        int256 absCooledAllocationDiff = abs(cooledAllocationDiff);
-        int256 minAbsAllocation = absCooledAllocationDiff >
-            absHeatedAllocationDiff
-            ? absHeatedAllocationDiff
-            : absCooledAllocationDiff;
-        int256 nonNaturalDifference = heatedAllocationDiff +
-            cooledAllocationDiff;
-        uint256 percentCooledTranche = ((cEthBal * bps) / (cEthBal + hEthBal));
-        uint256 nonNaturalMultiplier = ethUsdProfit > 0
-            ? percentCooledTranche
-            : ((1 * bps) - percentCooledTranche);
-        uint256 adjNonNaturalDiff = uint(abs(nonNaturalDifference)) *
-            nonNaturalMultiplier;
-        uint256 absAllocationTotal = uint(minAbsAllocation) + adjNonNaturalDiff;
-        return absAllocationTotal;
+        calc.absHeatedAllocationDiff = abs(calc.heatedAllocationDiff);
+        calc.absCooledAllocationDiff = abs(calc.cooledAllocationDiff);
+        calc.minAbsAllocation = calc.absCooledAllocationDiff >
+            calc.absHeatedAllocationDiff
+            ? calc.absHeatedAllocationDiff
+            : calc.absCooledAllocationDiff;
+        calc.nonNaturalDifference =
+            calc.heatedAllocationDiff +
+            calc.cooledAllocationDiff;
+        calc.percentCooledTranche = ((cEthBal * bps) / (cEthBal + hEthBal));
+        calc.nonNaturalMultiplier = calc.ethUsdProfit > 0
+            ? calc.percentCooledTranche
+            : ((1 * bps) - calc.percentCooledTranche);
+        calc.adjNonNaturalDiff =
+            uint(abs(calc.nonNaturalDifference)) *
+            calc.nonNaturalMultiplier;
+        calc.absAllocationTotal =
+            uint(calc.minAbsAllocation) +
+            calc.adjNonNaturalDiff;
+        calc.cooledAllocation;
+        calc.heatedAllocation;
+        if (calc.cooledAllocationDiff < 0) {
+            if ((cEthBal * calc.currentEthUsd) - calc.absAllocationTotal > 0) {
+                calc.cooledAllocation = -int(calc.absAllocationTotal);
+            } else {
+                calc.cooledAllocation = int(cEthBal * calc.currentEthUsd);
+            }
+        } else {
+            if ((hEthBal * calc.currentEthUsd) - calc.absAllocationTotal > 0) {
+                calc.cooledAllocation = int(calc.absAllocationTotal);
+            } else {
+                calc.cooledAllocation = int(hEthBal * calc.currentEthUsd);
+            }
+        }
+        calc.heatedAllocation = -calc.cooledAllocation;
+        calc.totalLockedUsd = (cEthBal + hEthBal) * calc.currentEthUsd;
+        uint256 cooledBalAfterAllocation = calc.totalLockedUsd -
+            (cEthBal * calc.currentEthUsd);
+        return cooledBalAfterAllocation;
     }
 
     function abs(int x) private pure returns (int) {
