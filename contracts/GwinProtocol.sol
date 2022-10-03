@@ -16,8 +16,11 @@ contract GwinProtocol is Ownable {
     // address[] public stakers;
     // // array of the allowed tokens
     // address[] public allowedTokens;
-    uint256 lastSettledEthUsd;
-    uint32 bp = 10000;
+
+    // TEMP temporary value for testing
+    uint256 lastSettledEthUsd = 1000;
+    uint256 decimals = 10**18;
+    uint256 bps = 10**4;
     // TEMP simulated balance
     uint256 cEthBal = 10;
     // TEMP simulated balance
@@ -36,14 +39,9 @@ contract GwinProtocol is Ownable {
     // get Heated ETH balance
     // get ETH/USD price
 
-    function tempGetPrices() public {
-        lastEthUsd = 1000;
-        currentEthUsd = 1100;
-    }
-
-    function getProfit(uint256 _ethUSd) public view returns (uint256) {
-        uint256 profit = ((_ethUSd - lastSettledEthUsd) * bps) /
-            lastSettledEthUsd;
+    function getProfit(uint256 _ethUSd) public view returns (int256) {
+        int256 profit = ((int(_ethUSd) - int(lastSettledEthUsd)) *
+            int(decimals)) / int(lastSettledEthUsd);
         return profit;
     }
 
@@ -55,56 +53,68 @@ contract GwinProtocol is Ownable {
     // make modular function that does calculations that both tranches need
     function trancheSpecificCalcs(
         bool _isCooled,
-        uint256 _ethUsdProfit,
+        int256 _ethUsdProfit,
         uint256 _currentEthUsd
-    ) public returns (uint256) {
+    ) private returns (int256) {
+        require(
+            cEthBal > 0 && hEthBal > 0,
+            "Protocol must have funds in order to settle."
+        );
+        uint256 trancheBal;
+        int256 r;
         if (_isCooled == true) {
-            uint256 trancheBal = cEthBal;
-            uint256 r = -0.5;
+            trancheBal = cEthBal;
+            r = -5000;
         } else {
-            uint256 trancheBal = hEthBal;
-            uint256 r = 0.5;
+            trancheBal = hEthBal;
+            r = 5000;
         }
-        uint256 trancheChange = (trancheBal * _currentEthUsd) -
-            (trancheBal * lastSettledEthUsd);
-        uint256 expectedPayout = trancheChange * (1 + r);
-        uint256 allocationDifference = expectedPayout - trancheChange;
+        require(trancheBal > 0, "Tranche must have a balance.");
+        require(
+            r == -5000 || r == 5000,
+            "Tranche must have a valid multiplier value."
+        );
+        int256 trancheChange = (int(trancheBal) * int(_currentEthUsd)) -
+            (int(trancheBal) * int(lastSettledEthUsd));
+        int256 expectedPayout = (trancheChange * ((1 * int(bps)) + r)) /
+            int(bps);
+        int256 allocationDifference = expectedPayout - trancheChange;
         return allocationDifference;
     }
 
     // Interact: cEthBal, hEthBal, cEthUsdBal, hEthUsdBal, tranche, lastEthUsd, currentEthUsd
-    function interact(bool _isCooled) public {
+    function interact(bool _isCooled) public returns (uint256) {
         uint256 currentEthUsd = getCurrentEthUsd();
-        uint256 ethUsdProfit = getProfit(currentEthUsd);
-        uint256 cooledAllocationDiff = trancheSpecificCalcs(
+        int256 ethUsdProfit = getProfit(currentEthUsd);
+        int256 cooledAllocationDiff = trancheSpecificCalcs(
             true,
             ethUsdProfit,
             currentEthUsd
         );
-        uint256 heatedAllocationDiff = trancheSpecificCalcs(
+        int256 heatedAllocationDiff = trancheSpecificCalcs(
             false,
             ethUsdProfit,
             currentEthUsd
         );
-        // calculate out min
-        // both tranche are needed for the diff
-        uint256 absHeatedAllocationDiff = abs(heatedAllocationDiff);
-        uint256 absCooledAllocationDiff = abs(cooledAllocationDiff);
-        uint256 minAbsAllocation = absCooledAllocationDiff >
+        int256 absHeatedAllocationDiff = abs(heatedAllocationDiff);
+        int256 absCooledAllocationDiff = abs(cooledAllocationDiff);
+        int256 minAbsAllocation = absCooledAllocationDiff >
             absHeatedAllocationDiff
             ? absHeatedAllocationDiff
             : absCooledAllocationDiff;
-        uint256 nonNaturalDifference = absHeatedAllocationDiff +
-            absCooledAllocationDiff;
-        uint256 percentCooledTranche = (cEthBal * bps) / (cEthBal + hEthBal);
+        int256 nonNaturalDifference = heatedAllocationDiff +
+            cooledAllocationDiff;
+        uint256 percentCooledTranche = ((cEthBal * bps) / (cEthBal + hEthBal));
         uint256 nonNaturalMultiplier = ethUsdProfit > 0
             ? percentCooledTranche
-            : (1 - percentCooledTranche);
-        uint256 adjNonNaturalDiff = abs(nonNaturalDifference) *
+            : ((1 * bps) - percentCooledTranche);
+        uint256 adjNonNaturalDiff = uint(abs(nonNaturalDifference)) *
             nonNaturalMultiplier;
+        uint256 absAllocationTotal = uint(minAbsAllocation) + adjNonNaturalDiff;
+        return absAllocationTotal;
     }
 
-    function abs(uint x) private pure returns (int) {
+    function abs(int x) private pure returns (int) {
         return x >= 0 ? x : -x;
     }
 

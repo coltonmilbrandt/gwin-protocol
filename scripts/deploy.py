@@ -1,3 +1,4 @@
+from abc import abstractclassmethod
 from brownie import GwinToken, GwinProtocol, network, config
 from scripts.helpful_scripts import get_account, get_contract
 from web3 import Web3
@@ -14,13 +15,8 @@ def deploy_gwin_protocol_and_gwin_token():
     # we will allow GWIN, WETH, FAU (i.e. DAI)
     weth_token = get_contract("weth_token")
     fau_token = get_contract("fau_token")
-
-    gwin_protocol.tempGetPrices()
-
-    profit = gwin_protocol.getProfit()
-    print("profit is... ")
-    print(profit)
-    print('basis points ^')
+    value = gwin_protocol.interact.call(True, {"from": account})
+    print(value)
     
     return gwin_protocol, gwin_ERC20
 
