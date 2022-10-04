@@ -36,7 +36,14 @@ contract GwinProtocol is Ownable {
         uint _endPrice,
         uint _hEthAll,
         uint _cEthAll
-    ) public returns (uint, uint) {
+    )
+        public
+        returns (
+            uint,
+            uint,
+            uint
+        )
+    {
         hEthBal = _hEthAll * decimals;
         cEthBal = _cEthAll * decimals;
         lastSettledEthUsd = _startPrice * usdDecimals;
@@ -44,7 +51,7 @@ contract GwinProtocol is Ownable {
         uint hEthVal;
         uint cEthVal;
         (hEthVal, cEthVal) = interact();
-        return (hEthVal, cEthVal);
+        return (hEthVal, cEthVal, pEthBal);
     }
 
     // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor

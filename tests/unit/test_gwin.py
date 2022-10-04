@@ -21,12 +21,23 @@ def test_interaction():
     # Assert
     assert rounded(value[0]) == 10454
     assert rounded(value[1]) == 9545
+    assert rounded(value[2]) == 20000
     value = gwin_protocol.test.call(1000,900,10,10,{"from": account})
     assert rounded(value[0]) == 9444
     assert rounded(value[1]) == 10555
+    assert rounded(value[2]) == 20000
     value = gwin_protocol.test.call(1000,750,10,10,{"from": account})
     assert rounded(value[0]) == 8333
     assert rounded(value[1]) == 11666
+    assert rounded(value[2]) == 20000
+    value = gwin_protocol.test.call(1000,1511,10,10,{"from": account})
+    assert rounded(value[0]) == 11690
+    assert rounded(value[1]) == 8309
+    assert rounded(value[2]) == 20000
+    value = gwin_protocol.test.call(1000,2888,10,10,{"from": account})
+    assert rounded(value[0]) == 13268
+    assert rounded(value[1]) == 6731
+    assert rounded(value[2]) == 20000
 
 
 def test_can_deploy_ERC20():
