@@ -40,6 +40,11 @@ def get_account(index=None, id=None):
         return accounts.load(id)
     return accounts.add(config["wallets"]["from_key"])
 
+def rounded(val):
+    val = val / 1000000000000000
+    val = int(val)
+    return val
+
 # *args allows for any number of arguments afterward
 def encode_function_data(initializer=None, *args):
     """Encodes the function call so we can work with an initializer

@@ -17,6 +17,7 @@ def deploy_gwin_protocol_and_gwin_token():
     fau_token = get_contract("fau_token")
     value = gwin_protocol.interact.call({"from": account})
     print(value)
+    print(value[1])
     
     return gwin_protocol, gwin_ERC20
 

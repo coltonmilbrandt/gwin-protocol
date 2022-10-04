@@ -21,12 +21,31 @@ contract GwinProtocol is Ownable {
     uint256 decimals = 10**18;
     uint256 usdDecimals = 10**8;
     uint256 lastSettledEthUsd = 1000 * usdDecimals;
+    uint256 ethUsd = 1100 * usdDecimals;
     uint256 bps = 10**4;
     // TEMP simulated balance
     uint256 cEthBal = 10 * decimals;
     // TEMP simulated balance
     uint256 hEthBal = 10 * decimals;
     uint256 pEthBal = cEthBal + hEthBal;
+
+    // ****** TEMPORARY TESTING ******
+
+    function test(
+        uint _startPrice,
+        uint _endPrice,
+        uint _hEthAll,
+        uint _cEthAll
+    ) public returns (uint, uint) {
+        hEthBal = _hEthAll * decimals;
+        cEthBal = _cEthAll * decimals;
+        lastSettledEthUsd = _startPrice * usdDecimals;
+        ethUsd = _endPrice * usdDecimals;
+        uint hEthVal;
+        uint cEthVal;
+        (hEthVal, cEthVal) = interact();
+        return (hEthVal, cEthVal);
+    }
 
     // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor
     IERC20 public gwinToken;
@@ -46,7 +65,7 @@ contract GwinProtocol is Ownable {
 
     // TEMP returns current ETH/USD
     function getCurrentEthUsd() public returns (uint256) {
-        return 1100 * usdDecimals;
+        return ethUsd;
     }
 
     // calculates allocation difference for a tranche

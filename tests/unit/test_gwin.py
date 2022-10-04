@@ -1,6 +1,6 @@
 from brownie import GwinProtocol, GwinToken, network, exceptions
 from pyparsing import null_debug_action
-from scripts.helpful_scripts import LOCAL_BLOCKCHAIN_ENVIRONMENTS, INITIAL_PRICE_FEED_VALUE, DECIMALS, get_account, get_contract
+from scripts.helpful_scripts import LOCAL_BLOCKCHAIN_ENVIRONMENTS, INITIAL_PRICE_FEED_VALUE, DECIMALS, get_account, get_contract, rounded
 from scripts.deploy import deploy_gwin_protocol_and_gwin_token
 from web3 import Web3
 import pytest
@@ -17,7 +17,17 @@ def test_interaction():
     non_owner = get_account(index=1)
     gwin_protocol, gwin_ERC20 = deploy_gwin_protocol_and_gwin_token()
     # Act
-    value = gwin_protocol.interact(True, {"from": account})
+    value = gwin_protocol.test.call(1000,1100,10,10,{"from": account})
+    # Assert
+    assert rounded(value[0]) == 10454
+    assert rounded(value[1]) == 9545
+    value = gwin_protocol.test.call(1000,900,10,10,{"from": account})
+    assert rounded(value[0]) == 9444
+    assert rounded(value[1]) == 10555
+    value = gwin_protocol.test.call(1000,750,10,10,{"from": account})
+    assert rounded(value[0]) == 8333
+    assert rounded(value[1]) == 11666
+
 
 def test_can_deploy_ERC20():
     account = get_account()
