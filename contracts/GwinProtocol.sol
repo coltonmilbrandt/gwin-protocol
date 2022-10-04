@@ -33,14 +33,11 @@ contract GwinProtocol is Ownable {
 
     // Right when we deploy this contract, we need to know the address of GWIN token
     constructor(address _gwinTokenAddress) public {
-        // we pass in the address from the GwinToken.sol contract
+        // pass in the address from the GwinToken.sol contract
         gwinToken = IERC20(_gwinTokenAddress);
     }
 
-    // get Cooled ETH balance
-    // get Heated ETH balance
-    // get ETH/USD price
-
+    // Get profit percent in basis points
     function getProfit(uint256 _ethUsd) public view returns (int256) {
         int256 profit = ((int(_ethUsd) - int(lastSettledEthUsd)) * int(bps)) /
             int(lastSettledEthUsd);
@@ -52,7 +49,7 @@ contract GwinProtocol is Ownable {
         return 1100 * usdDecimals;
     }
 
-    // make modular function that does calculations that both tranches need
+    // calculates allocation difference for a tranche
     function trancheSpecificCalcs(
         bool _isCooled,
         int256 _ethUsdProfit,
@@ -92,6 +89,7 @@ contract GwinProtocol is Ownable {
     function interact() public returns (uint, uint) {
         uint256 currentEthUsd = getCurrentEthUsd(); // current ETH/USD in terms of usdDecimals
         int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
+        // find expected return and use it to calculate allocation difference for each tranche
         int256 cooledAllocationDiff = trancheSpecificCalcs(
             true,
             ethUsdProfit,
@@ -102,9 +100,10 @@ contract GwinProtocol is Ownable {
             ethUsdProfit,
             currentEthUsd
         );
+        // use allocation differences to figure the absolute allocation total
         uint256 absAllocationTotal;
         {
-            // to avoid stack too deep error
+            // scope to avoid stack too deep error
             int256 absHeatedAllocationDiff = abs(heatedAllocationDiff);
             int256 absCooledAllocationDiff = abs(cooledAllocationDiff);
             int256 minAbsAllocation = absCooledAllocationDiff >
@@ -122,6 +121,7 @@ contract GwinProtocol is Ownable {
                 nonNaturalMultiplier;
             absAllocationTotal = uint(minAbsAllocation) + adjNonNaturalDiff;
         }
+        // calculate the actual allocation for the cooled tranche
         int256 cooledAllocation;
         int256 heatedAllocation;
         if (cooledAllocationDiff < 0) {
@@ -137,15 +137,16 @@ contract GwinProtocol is Ownable {
                 cooledAllocation = int(hEthBal * currentEthUsd);
             }
         }
+        // heated allocation is the inverse of the cooled allocation
         heatedAllocation = -cooledAllocation; // USD allocation in usdDecimal terms
-        uint256 totalLockedUsd = ((cEthBal + hEthBal) * currentEthUsd) / // USD balance in usdDecimal terms
+        uint256 totalLockedUsd = ((cEthBal + hEthBal) * currentEthUsd) / // USD balance of protocol in usdDecimal terms
             decimals;
-        int256 cooledBalAfterAllocation = int(totalLockedUsd) - // USD cooled balance in usdDecimal terms
+        int256 cooledBalAfterAllocation = int(totalLockedUsd) - // cooled USD balance in usdDecimal terms
             (int((cEthBal * currentEthUsd)) / int(decimals)) +
             cooledAllocation;
-        int256 heatedBalAfterAllocation = int(totalLockedUsd) -
+        int256 heatedBalAfterAllocation = int(totalLockedUsd) - // heated USD balance in usdDecimal terms
             cooledBalAfterAllocation;
-        (hEthBal, cEthBal) = reallocate(
+        (hEthBal, cEthBal) = reallocate( // reallocate the protocol ETH according to price movement
             currentEthUsd,
             cooledBalAfterAllocation,
             heatedBalAfterAllocation
@@ -159,7 +160,7 @@ contract GwinProtocol is Ownable {
         int256 _hUsdBal // in usdDecimal form
     ) private returns (uint, uint) {
         uint cEthBalNew = (uint(_cUsdBal) * decimals) / _currentEthUsd; // new cEth Balance in Wei
-        uint hEthBalNew = pEthBal - cEthBalNew; // new hEth Balance in Wei
+        uint hEthBalNew = pEthBal - cEthBalNew; // new hEth Balance in Wei (inverse of cEth Balance)
         return (hEthBalNew, cEthBalNew);
     }
 
