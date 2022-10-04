@@ -26,6 +26,7 @@ contract GwinProtocol is Ownable {
     uint256 cEthBal = 10 * decimals;
     // TEMP simulated balance
     uint256 hEthBal = 10 * decimals;
+    uint256 pEthBal = cEthBal + hEthBal;
 
     // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor
     IERC20 public gwinToken;
@@ -88,9 +89,8 @@ contract GwinProtocol is Ownable {
         interact();
     }
 
-    // Interact: cEthBal, hEthBal, cEthUsdBal, hEthUsdBal, tranche, lastEthUsd, currentEthUsd
-    function interact() public returns (int256) {
-        uint256 currentEthUsd = getCurrentEthUsd();
+    function interact() public returns (uint, uint) {
+        uint256 currentEthUsd = getCurrentEthUsd(); // current ETH/USD in terms of usdDecimals
         int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
         int256 cooledAllocationDiff = trancheSpecificCalcs(
             true,
@@ -145,26 +145,25 @@ contract GwinProtocol is Ownable {
             cooledAllocation;
         int256 heatedBalAfterAllocation = int(totalLockedUsd) -
             cooledBalAfterAllocation;
-        // reallocate(
-        //     currentEthUsd,
-        //     cooledBalAfterAllocation,
-        //     heatedBalAfterAllocation
-        // );
+        (hEthBal, cEthBal) = reallocate(
+            currentEthUsd,
+            cooledBalAfterAllocation,
+            heatedBalAfterAllocation
+        );
+        return (hEthBal, cEthBal);
     }
 
-    // function reallocate(
-    //     uint256 _currentEthUsd,
-    //     int256 _cUsdBal,
-    //     int256 _hUsdBal
-    // ) private returns (uint, uint) {
-    //     cEthBal = (_cUsdBal * decimals) / _currentEthUsd;
-    //     hEthBal = (_hUsdBal * decimals) / _currentEthUsd;
-
-    // }
+    function reallocate(
+        uint256 _currentEthUsd, // in usdDecimal form
+        int256 _cUsdBal, // in usdDecimal form
+        int256 _hUsdBal // in usdDecimal form
+    ) private returns (uint, uint) {
+        uint cEthBalNew = (uint(_cUsdBal) * decimals) / _currentEthUsd; // new cEth Balance in Wei
+        uint hEthBalNew = pEthBal - cEthBalNew; // new hEth Balance in Wei
+        return (hEthBalNew, cEthBalNew);
+    }
 
     function abs(int x) private pure returns (int) {
         return x >= 0 ? x : -x;
     }
-
-    // Pass in: address, tranche, amount, hotColdRatio, priceChange
 }
