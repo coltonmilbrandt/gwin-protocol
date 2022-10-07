@@ -87,6 +87,7 @@ contract GwinProtocol is Ownable {
         );
         uint256 trancheBal;
         int256 r;
+        // get tranche balance and basis points for expected return
         if (_isCooled == true) {
             trancheBal = cEthBal; // in Wei
             r = -5000; // basis points
