@@ -21,12 +21,12 @@ contract GwinProtocol is Ownable {
     uint256 decimals = 10**18;
     uint256 usdDecimals = 10**8;
     uint256 lastSettledEthUsd = 1000 * usdDecimals;
-    uint256 ethUsd = 1100 * usdDecimals;
+    uint256 ethUsd = 1200 * usdDecimals;
     uint256 bps = 10**4;
     // TEMP simulated balance
-    uint256 cEthBal = 10 * decimals;
+    uint256 hEthBal = 18 * decimals;
     // TEMP simulated balance
-    uint256 hEthBal = 10 * decimals;
+    uint256 cEthBal = 20 * decimals;
     uint256 pEthBal = cEthBal + hEthBal;
 
     // ****** TEMPORARY TESTING ******
@@ -46,6 +46,7 @@ contract GwinProtocol is Ownable {
     {
         hEthBal = _hEthAll * decimals;
         cEthBal = _cEthAll * decimals;
+        pEthBal = (_hEthAll + _cEthAll) * decimals;
         lastSettledEthUsd = _startPrice * usdDecimals;
         ethUsd = _endPrice * usdDecimals;
         uint hEthVal;
