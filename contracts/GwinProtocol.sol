@@ -51,7 +51,7 @@ contract GwinProtocol is Ownable {
         ethUsd = _endPrice * usdDecimals;
         uint hEthVal;
         uint cEthVal;
-        // (hEthVal, cEthVal) = interact();
+        (hEthVal, cEthVal) = interact();
         return (hEthVal, cEthVal, pEthBal);
     }
 

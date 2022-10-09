@@ -55,7 +55,7 @@ def test_uneven():
     value = gwin_protocol.test.call(1000,1200,18,20,{"from": account})
     assert rounded(value[0]) == 19587
     assert rounded(value[1]) == 18412
-    assert rounded(value[2]) == 40000
+    assert rounded(value[2]) == 38000
 
 def test_can_deploy_ERC20():
     account = get_account()
