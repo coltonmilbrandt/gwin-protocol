@@ -51,7 +51,7 @@ contract GwinProtocol is Ownable {
         ethUsd = _endPrice * usdDecimals;
         uint hEthVal;
         uint cEthVal;
-        (hEthVal, cEthVal) = interact();
+        // (hEthVal, cEthVal) = interact();
         return (hEthVal, cEthVal, pEthBal);
     }
 
@@ -81,7 +81,7 @@ contract GwinProtocol is Ownable {
         bool _isCooled,
         int256 _ethUsdProfit,
         uint256 _currentEthUsd
-    ) private returns (int256) {
+    ) private returns (int256, int256) {
         require(
             cEthBal > 0 && hEthBal > 0, // in Wei
             "Protocol must have funds in order to settle."
@@ -107,7 +107,7 @@ contract GwinProtocol is Ownable {
             int(bps);
         int256 allocationDifference = expectedPayout - trancheChange;
         allocationDifference = allocationDifference / int(decimals);
-        return allocationDifference;
+        return (allocationDifference, trancheChange);
     }
 
     function deposit() public {
@@ -118,18 +118,17 @@ contract GwinProtocol is Ownable {
         uint256 currentEthUsd = getCurrentEthUsd(); // current ETH/USD in terms of usdDecimals
         int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
         // find expected return and use it to calculate allocation difference for each tranche
-        int256 cooledAllocationDiff = trancheSpecificCalcs(
-            true,
-            ethUsdProfit,
-            currentEthUsd
-        );
-        int256 heatedAllocationDiff = trancheSpecificCalcs(
-            false,
-            ethUsdProfit,
-            currentEthUsd
-        );
+        (
+            int256 cooledAllocationDiff,
+            int256 cooledChange
+        ) = trancheSpecificCalcs(true, ethUsdProfit, currentEthUsd);
+        (
+            int256 heatedAllocationDiff,
+            int256 heatedChange
+        ) = trancheSpecificCalcs(false, ethUsdProfit, currentEthUsd);
         // use allocation differences to figure the absolute allocation total
         uint256 absAllocationTotal;
+        int testVal;
         {
             // scope to avoid stack too deep error
             int256 absHeatedAllocationDiff = abs(heatedAllocationDiff);
@@ -145,8 +144,8 @@ contract GwinProtocol is Ownable {
             uint256 nonNaturalMultiplier = ethUsdProfit > 0
                 ? percentCooledTranche
                 : ((1 * bps) - percentCooledTranche);
-            uint256 adjNonNaturalDiff = uint(abs(nonNaturalDifference)) *
-                nonNaturalMultiplier;
+            uint256 adjNonNaturalDiff = (uint(abs(nonNaturalDifference)) *
+                nonNaturalMultiplier) / bps;
             absAllocationTotal = uint(minAbsAllocation) + adjNonNaturalDiff;
         }
         // calculate the actual allocation for the cooled tranche
@@ -167,13 +166,19 @@ contract GwinProtocol is Ownable {
         }
         // heated allocation is the inverse of the cooled allocation
         heatedAllocation = -cooledAllocation; // USD allocation in usdDecimal terms
+        // testVal = int(cooledAllocation); // $1,905.26 in UsdDecimal format
         uint256 totalLockedUsd = ((cEthBal + hEthBal) * currentEthUsd) / // USD balance of protocol in usdDecimal terms
             decimals;
-        int256 cooledBalAfterAllocation = int(totalLockedUsd) - // cooled USD balance in usdDecimal terms
-            (int((cEthBal * currentEthUsd)) / int(decimals)) +
-            cooledAllocation;
+        // testVal = int(totalLockedUsd); // $45,600 in UsdDecimal format
+        // int256 cooledBalAfterAllocation = int(totalLockedUsd) - // cooled USD balance in usdDecimal terms
+        //     (int(cEthBal * currentEthUsd) / int(decimals)) +
+        //     cooledAllocation;
+        int256 cooledBalAfterAllocation = ((int(cEthBal * lastSettledEthUsd) +
+            cooledChange) / int(decimals)) + cooledAllocation;
+        // testVal = cooledBalAfterAllocation;
         int256 heatedBalAfterAllocation = int(totalLockedUsd) - // heated USD balance in usdDecimal terms
             cooledBalAfterAllocation;
+        // testVal = int(heatedBalAfterAllocation);
         (hEthBal, cEthBal) = reallocate( // reallocate the protocol ETH according to price movement
             currentEthUsd,
             cooledBalAfterAllocation,
