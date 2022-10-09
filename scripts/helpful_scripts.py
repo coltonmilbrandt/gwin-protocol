@@ -41,7 +41,7 @@ def get_account(index=None, id=None):
     return accounts.add(config["wallets"]["from_key"])
 
 def rounded(val):
-    val = val / 1000000000000000
+    val = val / 10000000000000000
     val = int(val)
     return val
 

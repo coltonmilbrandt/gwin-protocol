@@ -19,25 +19,25 @@ def test_interaction():
     # Act
     # Assert
     value = gwin_protocol.test.call(1000,1100,10,10,{"from": account})
-    assert rounded(value[0]) == 10454
-    assert rounded(value[1]) == 9545
-    assert rounded(value[2]) == 20000
+    assert rounded(value[0]) == 1045
+    assert rounded(value[1]) == 954
+    assert rounded(value[2]) == 2000
     value = gwin_protocol.test.call(1000,900,10,10,{"from": account})
-    assert rounded(value[0]) == 9444
-    assert rounded(value[1]) == 10555
-    assert rounded(value[2]) == 20000
+    assert rounded(value[0]) == 944
+    assert rounded(value[1]) == 1055
+    assert rounded(value[2]) == 2000
     value = gwin_protocol.test.call(1000,750,10,10,{"from": account})
-    assert rounded(value[0]) == 8333
-    assert rounded(value[1]) == 11666
-    assert rounded(value[2]) == 20000
+    assert rounded(value[0]) == 833
+    assert rounded(value[1]) == 1166
+    assert rounded(value[2]) == 2000
     value = gwin_protocol.test.call(1000,1511,10,10,{"from": account})
-    assert rounded(value[0]) == 11690
-    assert rounded(value[1]) == 8309
-    assert rounded(value[2]) == 20000
+    assert rounded(value[0]) == 1169
+    assert rounded(value[1]) == 830
+    assert rounded(value[2]) == 2000
     value = gwin_protocol.test.call(1000,2888,10,10,{"from": account})
-    assert rounded(value[0]) == 13268
-    assert rounded(value[1]) == 6731
-    assert rounded(value[2]) == 20000
+    assert rounded(value[0]) == 1326
+    assert rounded(value[1]) == 673
+    assert rounded(value[2]) == 2000
     # value = gwin_protocol.test.call(1000,1200,18,20,{"from": account})
     # assert rounded(value[0]) == 19587
     # assert rounded(value[1]) == 18412
@@ -53,9 +53,13 @@ def test_uneven():
     # Act
     # Assert
     value = gwin_protocol.test.call(1000,1200,18,20,{"from": account})
-    assert rounded(value[0]) == 19587
-    assert rounded(value[1]) == 18412
-    assert rounded(value[2]) == 38000
+    assert rounded(value[0]) == 1958
+    assert rounded(value[1]) == 1841
+    assert rounded(value[2]) == 3800
+    value = gwin_protocol.test.call(500,300,25,12,{"from": account})
+    assert rounded(value[0]) == 1807
+    assert rounded(value[1]) == 1892
+    assert rounded(value[2]) == 3700
 
 def test_can_deploy_ERC20():
     account = get_account()
