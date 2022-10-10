@@ -15,9 +15,13 @@ def deploy_gwin_protocol_and_gwin_token():
     # we will allow GWIN, WETH, FAU (i.e. DAI)
     weth_token = get_contract("weth_token")
     fau_token = get_contract("fau_token")
-    value = gwin_protocol.interact.call({"from": account})
-    print(value)
-    # print(value[1])
+    # value = gwin_protocol.interact.call({"from": account})
+    # print(value)
+    # # print(value[1])
+    gwin_protocol.initializeProtocol({"from": account, "value": Web3.toWei(1, "ether")})
+    x = gwin_protocol.retrieveBalance.call({"from": account})
+    print(x)
+    print(gwin_protocol.balance())
     
     return gwin_protocol, gwin_ERC20
 

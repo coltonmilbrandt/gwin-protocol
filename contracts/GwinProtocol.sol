@@ -6,31 +6,84 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract GwinProtocol is Ownable {
-    // // token address -> staker address -> amount
-    // mapping(address => mapping(address => uint256)) public stakingBalance;
-    // // staker address -> unique tokens staked
-    // mapping(address => uint256) public uniqueTokensStaked;
+    struct Bal {
+        uint balance;
+        uint percent;
+    }
+
+    //    isCooled -> depositor address -> amount
+    // mapping(bool => mapping(address => Bal)) public ethBalance;
+    mapping(address => Bal) public cooledEthBalance;
+    mapping(address => Bal) public heatedEthBalance;
+    // token address -> staker address -> amount
+    mapping(address => mapping(address => uint256)) public stakingBalance;
+    // staker address -> unique tokens staked
+    mapping(address => uint256) public uniqueTokensStaked;
     // // token address -> token price feed address
     // mapping(address => address) public tokenPriceFeedMapping;
-    // // array of stakers
-    // address[] public stakers;
-    // // array of the allowed tokens
-    // address[] public allowedTokens;
+    // array of stakers
+    address[] public stakers;
+    // array of the allowed tokens
+    address[] public allowedTokens;
 
-    // TEMP temporary value for testing
+    enum PROTOCOL_STATE {
+        OPEN, //1
+        CLOSED, //2
+        CALCULATING //3
+    }
+    PROTOCOL_STATE public protocol_state;
+
+    // ********* Decimal Values *********
     uint256 decimals = 10**18;
     uint256 usdDecimals = 10**8;
+    uint256 bps = 10**4;
+
+    // *********  Test Values   *********
     uint256 lastSettledEthUsd = 1000 * usdDecimals;
     uint256 ethUsd = 1200 * usdDecimals;
-    uint256 bps = 10**4;
     // TEMP simulated balance
-    uint256 hEthBal = 18 * decimals;
+    uint256 hEthBal;
     // TEMP simulated balance
-    uint256 cEthBal = 20 * decimals;
+    uint256 cEthBal;
     uint256 pEthBal = cEthBal + hEthBal;
 
-    // ****** TEMPORARY TESTING ******
+    // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor
+    IERC20 public gwinToken;
 
+    // Right when we deploy this contract, we need to know the address of GWIN token
+    constructor(address _gwinTokenAddress) public {
+        // pass in the address from the GwinToken.sol contract
+        gwinToken = IERC20(_gwinTokenAddress);
+        protocol_state = PROTOCOL_STATE.CLOSED;
+    }
+
+    function retrieveBalance() public returns (uint) {
+        return cooledEthBalance[msg.sender].percent;
+    }
+
+    function initializeProtocol() public payable {
+        require(
+            protocol_state == PROTOCOL_STATE.CLOSED,
+            "The Protocol is already initialized."
+        );
+        require(
+            cEthBal == 0 && hEthBal == 0,
+            "The Protocol already has funds deposited."
+        );
+        uint splitAmount = msg.value / 2;
+        cooledEthBalance[msg.sender].balance += splitAmount;
+        cooledEthBalance[msg.sender].percent = 10000;
+        cEthBal = splitAmount;
+        heatedEthBalance[msg.sender].balance += splitAmount;
+        heatedEthBalance[msg.sender].percent = 10000;
+        hEthBal = splitAmount;
+        protocol_state == PROTOCOL_STATE.OPEN;
+        lastSettledEthUsd = getCurrentEthUsd();
+    }
+
+    function deposit() public payable {}
+
+    // ****** TEMPORARY TESTING ******
     function test(
         uint _startPrice,
         uint _endPrice,
@@ -55,13 +108,60 @@ contract GwinProtocol is Ownable {
         return (hEthVal, cEthVal, pEthBal);
     }
 
-    // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor
-    IERC20 public gwinToken;
+    function stakeTokens(uint256 _amount, address _token) public {
+        // Make sure that the amount to stake is more than 0
+        require(_amount > 0, "Amount must be more than 0");
+        // Check whether token is allowed by passing it to tokenIsAllowed()
+        require(tokenIsAllowed(_token), "Token is not currently allowed.");
 
-    // Right when we deploy this contract, we need to know the address of GWIN token
-    constructor(address _gwinTokenAddress) public {
-        // pass in the address from the GwinToken.sol contract
-        gwinToken = IERC20(_gwinTokenAddress);
+        // NOTES: transferFrom  --  ERC20s have transfer and transfer from.
+        // Transfer only works if you call it from the wallet that owns the token
+
+        // Transfer _amount of _token to the contract address
+        IERC20(_token).transferFrom(msg.sender, address(this), _amount);
+        // Set the _token as one of the unique tokens staked by the staker
+        updateUniqueTokensStaked(msg.sender, _token);
+        // Update the staking balance for the staker
+        stakingBalance[_token][msg.sender] =
+            stakingBalance[_token][msg.sender] +
+            _amount;
+        // If after this, the staker has just 1 token staked, then add the staker to stakers[] array
+        if (uniqueTokensStaked[msg.sender] == 1) {
+            stakers.push(msg.sender);
+        }
+    }
+
+    // updates the mapping of user to tokens staked, could be called INCREMENT
+    function updateUniqueTokensStaked(address _user, address _token) internal {
+        // NOTES: I feel like it should be '>=' below instead
+
+        // If the staking balance of the staker is less that or equal to 0 then...
+        if (stakingBalance[_token][_user] <= 0) {
+            // add 1 to the number of unique tokens staked
+            uniqueTokensStaked[_user] = uniqueTokensStaked[_user] + 1;
+        }
+    }
+
+    // add a token address to allowed tokens for staking, only owner can call
+    function addAllowedTokens(address _token) public onlyOwner {
+        // add token address to allowedTokens[] array
+        allowedTokens.push(_token);
+    }
+
+    // returns whether token is allowed
+    function tokenIsAllowed(address _token) public view returns (bool) {
+        // Loops through the array of allowedTokens[] for length of array
+        for (
+            uint256 allowedTokensIndex = 0;
+            allowedTokensIndex < allowedTokens.length;
+            allowedTokensIndex++
+        ) {
+            // If token at index matched the passed in token, return true
+            if (allowedTokens[allowedTokensIndex] == _token) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Get profit percent in basis points
@@ -72,7 +172,7 @@ contract GwinProtocol is Ownable {
     }
 
     // TEMP returns current ETH/USD
-    function getCurrentEthUsd() public returns (uint256) {
+    function getCurrentEthUsd() public view returns (uint256) {
         return ethUsd;
     }
 
@@ -110,10 +210,6 @@ contract GwinProtocol is Ownable {
         return (allocationDifference, trancheChange);
     }
 
-    function deposit() public {
-        interact();
-    }
-
     function interact() public returns (uint, uint) {
         uint256 currentEthUsd = getCurrentEthUsd(); // current ETH/USD in terms of usdDecimals
         int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
@@ -128,9 +224,8 @@ contract GwinProtocol is Ownable {
         ) = trancheSpecificCalcs(false, ethUsdProfit, currentEthUsd);
         // use allocation differences to figure the absolute allocation total
         uint256 absAllocationTotal;
-        int testVal;
         {
-            // scope to avoid stack too deep error
+            // scope to avoid 'stack too deep' error
             int256 absHeatedAllocationDiff = abs(heatedAllocationDiff);
             int256 absCooledAllocationDiff = abs(cooledAllocationDiff);
             int256 minAbsAllocation = absCooledAllocationDiff >
@@ -166,19 +261,12 @@ contract GwinProtocol is Ownable {
         }
         // heated allocation is the inverse of the cooled allocation
         heatedAllocation = -cooledAllocation; // USD allocation in usdDecimal terms
-        // testVal = int(cooledAllocation); // $1,905.26 in UsdDecimal format
         uint256 totalLockedUsd = ((cEthBal + hEthBal) * currentEthUsd) / // USD balance of protocol in usdDecimal terms
             decimals;
-        // testVal = int(totalLockedUsd); // $45,600 in UsdDecimal format
-        // int256 cooledBalAfterAllocation = int(totalLockedUsd) - // cooled USD balance in usdDecimal terms
-        //     (int(cEthBal * currentEthUsd) / int(decimals)) +
-        //     cooledAllocation;
         int256 cooledBalAfterAllocation = ((int(cEthBal * lastSettledEthUsd) +
             cooledChange) / int(decimals)) + cooledAllocation;
-        // testVal = cooledBalAfterAllocation;
         int256 heatedBalAfterAllocation = int(totalLockedUsd) - // heated USD balance in usdDecimal terms
             cooledBalAfterAllocation;
-        // testVal = int(heatedBalAfterAllocation);
         (hEthBal, cEthBal) = reallocate( // reallocate the protocol ETH according to price movement
             currentEthUsd,
             cooledBalAfterAllocation,
