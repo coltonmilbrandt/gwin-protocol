@@ -15,18 +15,22 @@ def deploy_gwin_protocol_and_gwin_token():
     # we will allow GWIN, WETH, FAU (i.e. DAI)
     weth_token = get_contract("weth_token")
     fau_token = get_contract("fau_token")
-    # value = gwin_protocol.interact.call({"from": account})
-    # print(value)
-    # # print(value[1])
-    gwin_protocol.initializeProtocol({"from": account, "value": Web3.toWei(1, "ether")})
+
+    txTwo = gwin_protocol.initializeProtocol({"from": account, "value": Web3.toWei(20, "ether")})
+    txTwo.wait(1)
     x = gwin_protocol.retrieveBalance.call({"from": account})
     print(x)
     print(gwin_protocol.balance())
     # Deposit is problematic PICK UP HERE
-    t = gwin_protocol.depositToTranche(True, {"from": account, "value": Web3.toWei(0.1, "ether")})
-    t.wait(1)
-    y = gwin_protocol.retrieveProtocolBalance.call({"from": account})
+    y = gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})
     print(y)
+    z = gwin_protocol.retrieveProtocolHEthBalance.call({"from": account})
+    print(z)
+    gwin_protocol.depositToTranche(True, {"from": account, "value": Web3.toWei(1, "ether")})
+    print(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account}))
+    print(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account}))
+    print(gwin_protocol.balance())
+    print(gwin_protocol.retrieveBalance.call({"from": account}))
     
     return gwin_protocol, gwin_ERC20
 

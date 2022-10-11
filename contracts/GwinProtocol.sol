@@ -43,13 +43,11 @@ contract GwinProtocol is Ownable {
     uint256 bps = 10**4;
 
     // *********  Test Values   *********
-    uint256 lastSettledEthUsd = 1000 * usdDecimals;
-    uint256 ethUsd = 1200 * usdDecimals;
-    // TEMP simulated balance
+    uint256 lastSettledEthUsd;
+    uint256 ethUsd;
     uint256 hEthBal;
-    // TEMP simulated balance
     uint256 cEthBal;
-    uint256 pEthBal = cEthBal + hEthBal;
+    uint256 pEthBal;
 
     // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor
     IERC20 public gwinToken;
@@ -77,6 +75,7 @@ contract GwinProtocol is Ownable {
         heatedEthBalance[msg.sender].balance += splitAmount;
         heatedEthBalance[msg.sender].percent = 10000;
         hEthBal = splitAmount;
+        pEthBal = cEthBal + hEthBal;
         protocol_state = PROTOCOL_STATE.OPEN;
         // TEMP replace with getCurrentEthUsd() and price feed
         lastSettledEthUsd = 1000 * usdDecimals;
@@ -93,37 +92,42 @@ contract GwinProtocol is Ownable {
             cEthBal > 0 && hEthBal > 0,
             "The Protocol needs initial funds deposited."
         );
+        require(msg.value > 0, "Amount must be greater than zero.");
 
         // Set ETH/USD prices (last settled and current)
         // Interact to rebalance Tranches with new USD price
         interact();
-        // // Deposit ETH
-        // if (_isCooled == true) {
-        //     cooledEthBalance[msg.sender].balance += msg.value;
-        //     cEthBal += msg.value;
-        //     // add to cooledStakers array if absent
-        //     if (isUniqueCooledStaker[msg.sender] == false) {
-        //         cooledStakers.push(msg.sender);
-        //     }
-        // } else {
-        //     heatedEthBalance[msg.sender].balance += msg.value;
-        //     hEthBal += msg.value;
-        //     // add to heatedStakers array if absent
-        //     if (isUniqueHeatedStaker[msg.sender] == false) {
-        //         heatedStakers.push(msg.sender);
-        //     }
-        // }
-        // // Re-Adjust user percentages for affected Tranche
+        // Deposit ETH
+        if (_isCooled == true) {
+            cooledEthBalance[msg.sender].balance += msg.value;
+            cEthBal += msg.value;
+            // add to cooledStakers array if absent
+            if (isUniqueCooledStaker[msg.sender] == false) {
+                cooledStakers.push(msg.sender);
+            }
+        } else {
+            heatedEthBalance[msg.sender].balance += msg.value;
+            hEthBal += msg.value;
+            // add to heatedStakers array if absent
+            if (isUniqueHeatedStaker[msg.sender] == false) {
+                heatedStakers.push(msg.sender);
+            }
+        }
+        // Re-Adjust user percentages for affected Tranche
         // reAdjust();
         // lastSettledEthUsd = getCurrentEthUsd();
     }
 
     function retrieveBalance() public view returns (uint) {
-        return cooledEthBalance[msg.sender].balance;
+        return cooledEthBalance[msg.sender].percent;
     }
 
-    function retrieveProtocolBalance() public view returns (uint) {
+    function retrieveProtocolCEthBalance() public view returns (uint) {
         return cEthBal;
+    }
+
+    function retrieveProtocolHEthBalance() public view returns (uint) {
+        return hEthBal;
     }
 
     // Adjust affected tranche percentages
@@ -264,7 +268,10 @@ contract GwinProtocol is Ownable {
 
     // change to private down the line?
     function interact() public returns (uint, uint) {
-        uint256 currentEthUsd = getCurrentEthUsd(); // current ETH/USD in terms of usdDecimals
+        // old method
+        // uint256 currentEthUsd = getCurrentEthUsd(); // current ETH/USD in terms of usdDecimals
+
+        uint256 currentEthUsd = ethUsd;
         int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
         // find expected return and use it to calculate allocation difference for each tranche
         (
@@ -328,13 +335,16 @@ contract GwinProtocol is Ownable {
         return (hEthBal, cEthBal);
     }
 
+    // I want to explicitly know pEthBal to pass in here, not calculate it
     function reallocate(
         uint256 _currentEthUsd, // in usdDecimal form
         int256 _cUsdBal, // in usdDecimal form
         int256 _hUsdBal // in usdDecimal form
     ) private view returns (uint, uint) {
         uint cEthBalNew = (uint(_cUsdBal) * decimals) / _currentEthUsd; // new cEth Balance in Wei
-        uint hEthBalNew = pEthBal - cEthBalNew; // new hEth Balance in Wei (inverse of cEth Balance)
+        uint hEthBalNew = (uint(_hUsdBal) * decimals) / _currentEthUsd; // new hEth Balance in Wei
+        // old method
+        // uint hEthBalNew = pEthBal - cEthBalNew; // new hEth Balance in Wei (inverse of cEth Balance)
         return (hEthBalNew, cEthBalNew);
     }
 
