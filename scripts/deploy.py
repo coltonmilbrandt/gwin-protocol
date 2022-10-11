@@ -22,6 +22,10 @@ def deploy_gwin_protocol_and_gwin_token():
     x = gwin_protocol.retrieveBalance.call({"from": account})
     print(x)
     print(gwin_protocol.balance())
+    t = gwin_protocol.depositToTranche(True, {"from": account, "value": Web3.toWei(0.1, "ether")})
+    t.wait(1)
+    y = gwin_protocol.retrieveProtocolBalance.call({"from": account})
+    print(y)
     
     return gwin_protocol, gwin_ERC20
 

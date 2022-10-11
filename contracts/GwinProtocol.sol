@@ -18,9 +18,13 @@ contract GwinProtocol is Ownable {
     // token address -> staker address -> amount
     mapping(address => mapping(address => uint256)) public stakingBalance;
     // staker address -> unique tokens staked
-    mapping(address => uint256) public uniqueTokensStaked;
+    mapping(address => uint256) public uniquePositions;
     // // token address -> token price feed address
     // mapping(address => address) public tokenPriceFeedMapping;
+    mapping(address => bool) public isUniqueCooledStaker;
+    mapping(address => bool) public isUniqueHeatedStaker;
+    address[] public cooledStakers;
+    address[] public heatedStakers;
     // array of stakers
     address[] public stakers;
     // array of the allowed tokens
@@ -57,10 +61,6 @@ contract GwinProtocol is Ownable {
         protocol_state = PROTOCOL_STATE.CLOSED;
     }
 
-    function retrieveBalance() public returns (uint) {
-        return cooledEthBalance[msg.sender].percent;
-    }
-
     function initializeProtocol() public payable {
         require(
             protocol_state == PROTOCOL_STATE.CLOSED,
@@ -77,11 +77,62 @@ contract GwinProtocol is Ownable {
         heatedEthBalance[msg.sender].balance += splitAmount;
         heatedEthBalance[msg.sender].percent = 10000;
         hEthBal = splitAmount;
-        protocol_state == PROTOCOL_STATE.OPEN;
-        lastSettledEthUsd = getCurrentEthUsd();
+        protocol_state = PROTOCOL_STATE.OPEN;
+        // TEMP replace with getCurrentEthUsd() and price feed
+        lastSettledEthUsd = 1000 * usdDecimals;
+        ethUsd = 1000 * usdDecimals;
+        // end TEMP
     }
 
-    function deposit() public payable {}
+    function depositToTranche(bool _isCooled) public payable returns (bool) {
+        require(
+            protocol_state == PROTOCOL_STATE.OPEN,
+            "The Protocol has not been initialized yet."
+        );
+        require(
+            cEthBal > 0 && hEthBal > 0,
+            "The Protocol needs initial funds deposited."
+        );
+
+        // Set ETH/USD prices (last settled and current)
+        // Interact to rebalance Tranches with new USD price
+        interact();
+        // // Deposit ETH
+        // if (_isCooled == true) {
+        //     cooledEthBalance[msg.sender].balance += msg.value;
+        //     cEthBal += msg.value;
+        //     // add to cooledStakers array if absent
+        //     if (isUniqueCooledStaker[msg.sender] == false) {
+        //         cooledStakers.push(msg.sender);
+        //     }
+        // } else {
+        //     heatedEthBalance[msg.sender].balance += msg.value;
+        //     hEthBal += msg.value;
+        //     // add to heatedStakers array if absent
+        //     if (isUniqueHeatedStaker[msg.sender] == false) {
+        //         heatedStakers.push(msg.sender);
+        //     }
+        // }
+        // // Re-Adjust user percentages for affected Tranche
+        // reAdjust();
+        // lastSettledEthUsd = getCurrentEthUsd();
+    }
+
+    function retrieveBalance() public view returns (uint) {
+        return cooledEthBalance[msg.sender].balance;
+    }
+
+    function retrieveProtocolBalance() public view returns (uint) {
+        return cEthBal;
+    }
+
+    // Adjust affected tranche percentages
+    function reAdjust() public {
+        // select the affected tranche
+        // loop through stakers[] to get addresses (have heatedStakers[] and cooledStakers[]?)
+        //      use addresses as key to Bal mappings
+        //      use new ETH balance to determine percent ownership (can a value be used instead of writing?)
+    }
 
     // ****** TEMPORARY TESTING ******
     function test(
@@ -120,25 +171,25 @@ contract GwinProtocol is Ownable {
         // Transfer _amount of _token to the contract address
         IERC20(_token).transferFrom(msg.sender, address(this), _amount);
         // Set the _token as one of the unique tokens staked by the staker
-        updateUniqueTokensStaked(msg.sender, _token);
+        updateUniquePositions(msg.sender, _token);
         // Update the staking balance for the staker
         stakingBalance[_token][msg.sender] =
             stakingBalance[_token][msg.sender] +
             _amount;
         // If after this, the staker has just 1 token staked, then add the staker to stakers[] array
-        if (uniqueTokensStaked[msg.sender] == 1) {
+        if (uniquePositions[msg.sender] == 1) {
             stakers.push(msg.sender);
         }
     }
 
     // updates the mapping of user to tokens staked, could be called INCREMENT
-    function updateUniqueTokensStaked(address _user, address _token) internal {
+    function updateUniquePositions(address _user, address _token) internal {
         // NOTES: I feel like it should be '>=' below instead
 
         // If the staking balance of the staker is less that or equal to 0 then...
         if (stakingBalance[_token][_user] <= 0) {
             // add 1 to the number of unique tokens staked
-            uniqueTokensStaked[_user] = uniqueTokensStaked[_user] + 1;
+            uniquePositions[_user] = uniquePositions[_user] + 1;
         }
     }
 
@@ -171,8 +222,9 @@ contract GwinProtocol is Ownable {
         return profit;
     }
 
-    // TEMP returns current ETH/USD
-    function getCurrentEthUsd() public view returns (uint256) {
+    // TEMP returns current ETH/USD change to view later
+    function getCurrentEthUsd() public returns (uint256) {
+        ethUsd = 1200 * usdDecimals;
         return ethUsd;
     }
 
@@ -181,7 +233,7 @@ contract GwinProtocol is Ownable {
         bool _isCooled,
         int256 _ethUsdProfit,
         uint256 _currentEthUsd
-    ) private returns (int256, int256) {
+    ) private view returns (int256, int256) {
         require(
             cEthBal > 0 && hEthBal > 0, // in Wei
             "Protocol must have funds in order to settle."
@@ -210,6 +262,7 @@ contract GwinProtocol is Ownable {
         return (allocationDifference, trancheChange);
     }
 
+    // change to private down the line?
     function interact() public returns (uint, uint) {
         uint256 currentEthUsd = getCurrentEthUsd(); // current ETH/USD in terms of usdDecimals
         int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
@@ -279,7 +332,7 @@ contract GwinProtocol is Ownable {
         uint256 _currentEthUsd, // in usdDecimal form
         int256 _cUsdBal, // in usdDecimal form
         int256 _hUsdBal // in usdDecimal form
-    ) private returns (uint, uint) {
+    ) private view returns (uint, uint) {
         uint cEthBalNew = (uint(_cUsdBal) * decimals) / _currentEthUsd; // new cEth Balance in Wei
         uint hEthBalNew = pEthBal - cEthBalNew; // new hEth Balance in Wei (inverse of cEth Balance)
         return (hEthBalNew, cEthBalNew);
