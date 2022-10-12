@@ -171,7 +171,7 @@ contract GwinProtocol is Ownable {
                 ) {
                     address addrC = ethStakers[ethStakersIndex];
                     // ISSUE because if basis points are used for percentages, then precision will be an issue
-                    ethStakedBalance[addrC].cPercent =
+                    ethStakedBalance[addrC].hPercent =
                         (ethStakedBalance[addrC].hBal * bps) /
                         hEthBal;
                 }
