@@ -125,6 +125,46 @@ contract GwinProtocol is Ownable {
         lastSettledEthUsd = ethUsd;
     }
 
+    // function withdrawAll() public {}
+
+    // function withdrawAllFromTranche(bool _isCooled) public {}
+
+    // function withdrawFromTranche(bool _isCooled, uint _amount) public {
+    //     require(
+    //         protocol_state == PROTOCOL_STATE.OPEN,
+    //         "The Protocol has not been initialized yet."
+    //     );
+    //     require(
+    //         cEthBal > 0 && hEthBal > 0,
+    //         "The Protocol needs initial funds deposited."
+    //     );
+    //     require(_amount > 0, "Amount must be greater than zero.");
+    //     require(_amount < )
+
+    //     // Set ETH/USD prices (last settled and current)
+    //     // Interact to rebalance Tranches with new USD price
+    //     interact();
+    //     // ISSUE balances are off until reAdjusted, percents are right
+    //     reAdjust(true, _isCooled);
+    //     // Deposit ETH
+    //     if (_isCooled == true) {
+    //         ethStakedBalance[msg.sender].cBal -= _amount;
+    //         cEthBal -= _amount;
+    //     } else {
+    //         ethStakedBalance[msg.sender].hBal -= _amount;
+    //         hEthBal -= _amount;
+    //     }
+    //     // add to ethStakers array if absent
+    //     if (isUniqueEthStaker[msg.sender] == false) {
+    //         ethStakers.push(msg.sender);
+    //     }
+    //     // Re-Adjust user percentages for affected Tranche
+    //     reAdjust(false, _isCooled);
+
+    //     // TEMP until price feed is implements
+    //     lastSettledEthUsd = ethUsd;
+    // }
+
     // Adjust affected tranche percentages
     function reAdjust(bool _beforeDeposit, bool _isCooled) private {
         // select the affected tranche
