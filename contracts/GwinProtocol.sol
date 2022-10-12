@@ -29,8 +29,6 @@ contract GwinProtocol is Ownable {
     // array of the allowed tokens
     address[] public allowedTokens;
 
-    event addressReferenced(address sender);
-
     enum PROTOCOL_STATE {
         OPEN, //1
         CLOSED, //2
@@ -69,6 +67,9 @@ contract GwinProtocol is Ownable {
             cEthBal == 0 && hEthBal == 0,
             "The Protocol already has funds deposited."
         );
+        if (isUniqueEthStaker[msg.sender] == false) {
+            ethStakers.push(msg.sender);
+        }
         uint splitAmount = msg.value / 2;
         ethStakedBalance[msg.sender].cBal += splitAmount;
         ethStakedBalance[msg.sender].cPercent = 10000;
@@ -138,14 +139,13 @@ contract GwinProtocol is Ownable {
                 ethStakersIndex++
             ) {
                 address addrC = ethStakers[ethStakersIndex];
-                emit addressReferenced(addrC);
                 // ISSUE because if basis points are used for percentages, then precision will be an issue
                 ethStakedBalance[addrC].cBal =
-                    cEthBal *
-                    ethStakedBalance[addrC].cPercent;
+                    (cEthBal * ethStakedBalance[addrC].cPercent) /
+                    bps;
                 ethStakedBalance[addrC].hBal =
-                    hEthBal *
-                    ethStakedBalance[addrC].hPercent;
+                    (hEthBal * ethStakedBalance[addrC].hPercent) /
+                    bps;
             }
         } else {
             // AFTER deposit, only affected tranche percentages change
@@ -188,20 +188,24 @@ contract GwinProtocol is Ownable {
         return ethUsd;
     }
 
-    function retrieveCEthPercentBalance() public view returns (uint) {
-        return ethStakedBalance[msg.sender].cPercent;
+    function retrieveCEthPercentBalance(uint _user) public view returns (uint) {
+        address r = ethStakers[_user];
+        return ethStakedBalance[r].cPercent;
     }
 
-    function retrieveHEthPercentBalance() public view returns (uint) {
-        return ethStakedBalance[msg.sender].hPercent;
+    function retrieveHEthPercentBalance(uint _user) public view returns (uint) {
+        address r = ethStakers[_user];
+        return ethStakedBalance[r].hPercent;
     }
 
-    function retrieveCEthBalance() public view returns (uint) {
-        return ethStakedBalance[msg.sender].cBal;
+    function retrieveCEthBalance(uint _user) public view returns (uint) {
+        address r = ethStakers[_user];
+        return ethStakedBalance[r].cBal;
     }
 
-    function retrieveHEthBalance() public view returns (uint) {
-        return ethStakedBalance[msg.sender].hBal;
+    function retrieveHEthBalance(uint _user) public view returns (uint) {
+        address r = ethStakers[_user];
+        return ethStakedBalance[r].hBal;
     }
 
     function retrieveProtocolCEthBalance() public view returns (uint) {
