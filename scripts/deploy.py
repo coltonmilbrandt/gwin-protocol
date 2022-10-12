@@ -15,22 +15,38 @@ def deploy_gwin_protocol_and_gwin_token():
     # we will allow GWIN, WETH, FAU (i.e. DAI)
     weth_token = get_contract("weth_token")
     fau_token = get_contract("fau_token")
+    non_owner = get_account(index=1)
 
+    contract = Web3.eth.contract(address=gwin_protocol.address, abi=gwin_protocol.abi)
+
+    def handle_event(event):
+        print(Web3.toJSON(event))
+
+    async def log_loop(event_filter, poll_interval):
+        while True:
+            for PairCreated in event_filter.get_new_entries():
+                handle_event(PairCreated)
+            await asyncio.sleep(poll_interval)
+
+    gwin_protocol.addressReferenced(function(error, data)) {
+        print(data)
+    }
+    
     txTwo = gwin_protocol.initializeProtocol({"from": account, "value": Web3.toWei(20, "ether")})
     txTwo.wait(1)
-    x = gwin_protocol.retrieveBalance.call({"from": account})
-    print(x)
-    print(gwin_protocol.balance())
-    # Deposit is problematic PICK UP HERE
-    y = gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})
-    print(y)
-    z = gwin_protocol.retrieveProtocolHEthBalance.call({"from": account})
-    print(z)
-    gwin_protocol.depositToTranche(True, {"from": account, "value": Web3.toWei(1, "ether")})
+    gwin_protocol.changeCurrentEthUsd(1200, {"from": account})
+    txThree = gwin_protocol.depositToTranche(True, {"from": non_owner, "value": Web3.toWei(1, "ether")})
+    txThree.wait(1)
+
+    # txTwo = gwin_protocol.initializeProtocol({"from": account, "value": Web3.toWei(20, "ether")})
+    # txTwo.wait(1)
+    # x = gwin_protocol.retrieveBalance.call({"from": account})
+    # print(x)
+    # print(gwin_protocol.balance())
+    # gwin_protocol.depositToTranche(True, {"from": account, "value": Web3.toWei(1, "ether")})
     print(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account}))
     print(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account}))
     print(gwin_protocol.balance())
-    print(gwin_protocol.retrieveBalance.call({"from": account}))
     
     return gwin_protocol, gwin_ERC20
 

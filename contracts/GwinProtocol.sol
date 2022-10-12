@@ -7,28 +7,29 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract GwinProtocol is Ownable {
     struct Bal {
-        uint balance;
-        uint percent;
+        uint cBal;
+        uint cPercent;
+        uint hBal;
+        uint hPercent;
     }
 
     //    isCooled -> depositor address -> amount
     // mapping(bool => mapping(address => Bal)) public ethBalance;
-    mapping(address => Bal) public cooledEthBalance;
-    mapping(address => Bal) public heatedEthBalance;
+    mapping(address => Bal) public ethStakedBalance;
     // token address -> staker address -> amount
     mapping(address => mapping(address => uint256)) public stakingBalance;
     // staker address -> unique tokens staked
     mapping(address => uint256) public uniquePositions;
     // // token address -> token price feed address
     // mapping(address => address) public tokenPriceFeedMapping;
-    mapping(address => bool) public isUniqueCooledStaker;
-    mapping(address => bool) public isUniqueHeatedStaker;
-    address[] public cooledStakers;
-    address[] public heatedStakers;
+    mapping(address => bool) public isUniqueEthStaker;
+    address[] public ethStakers;
     // array of stakers
     address[] public stakers;
     // array of the allowed tokens
     address[] public allowedTokens;
+
+    event addressReferenced(address sender);
 
     enum PROTOCOL_STATE {
         OPEN, //1
@@ -69,11 +70,11 @@ contract GwinProtocol is Ownable {
             "The Protocol already has funds deposited."
         );
         uint splitAmount = msg.value / 2;
-        cooledEthBalance[msg.sender].balance += splitAmount;
-        cooledEthBalance[msg.sender].percent = 10000;
+        ethStakedBalance[msg.sender].cBal += splitAmount;
+        ethStakedBalance[msg.sender].cPercent = 10000;
         cEthBal = splitAmount;
-        heatedEthBalance[msg.sender].balance += splitAmount;
-        heatedEthBalance[msg.sender].percent = 10000;
+        ethStakedBalance[msg.sender].hBal += splitAmount;
+        ethStakedBalance[msg.sender].hPercent = 10000;
         hEthBal = splitAmount;
         pEthBal = cEthBal + hEthBal;
         protocol_state = PROTOCOL_STATE.OPEN;
@@ -83,7 +84,7 @@ contract GwinProtocol is Ownable {
         // end TEMP
     }
 
-    function depositToTranche(bool _isCooled) public payable returns (bool) {
+    function depositToTranche(bool _isCooled) public payable {
         require(
             protocol_state == PROTOCOL_STATE.OPEN,
             "The Protocol has not been initialized yet."
@@ -97,29 +98,110 @@ contract GwinProtocol is Ownable {
         // Set ETH/USD prices (last settled and current)
         // Interact to rebalance Tranches with new USD price
         interact();
+        // ISSUE balances are off until reAdjusted, percents are right
+        reAdjust(true, _isCooled);
         // Deposit ETH
         if (_isCooled == true) {
-            cooledEthBalance[msg.sender].balance += msg.value;
+            // this is the only correct balance for the tranche!
+            ethStakedBalance[msg.sender].cBal += msg.value;
+            // ethStakedBalance[msg.sender].percent =
+            //     ethStakedBalance[msg.sender].balance /
+            //     cEthBal;
             cEthBal += msg.value;
-            // add to cooledStakers array if absent
-            if (isUniqueCooledStaker[msg.sender] == false) {
-                cooledStakers.push(msg.sender);
-            }
+            // add to ethStakers array if absent
         } else {
-            heatedEthBalance[msg.sender].balance += msg.value;
+            ethStakedBalance[msg.sender].hBal += msg.value;
             hEthBal += msg.value;
-            // add to heatedStakers array if absent
-            if (isUniqueHeatedStaker[msg.sender] == false) {
-                heatedStakers.push(msg.sender);
-            }
+            // add to ethStakers array if absent
+        }
+        if (isUniqueEthStaker[msg.sender] == false) {
+            ethStakers.push(msg.sender);
         }
         // Re-Adjust user percentages for affected Tranche
-        // reAdjust();
-        // lastSettledEthUsd = getCurrentEthUsd();
+        reAdjust(false, _isCooled);
+
+        // TEMP until price feed is implements
+        lastSettledEthUsd = ethUsd;
     }
 
-    function retrieveBalance() public view returns (uint) {
-        return cooledEthBalance[msg.sender].percent;
+    // Adjust affected tranche percentages
+    function reAdjust(bool _beforeDeposit, bool _isCooled) private {
+        // select the affected tranche
+        // loop through stakers[] to get addresses (have ethStakers[] and ethStakers[]?)
+        //      use addresses as key to Bal mappings
+        //      use new ETH balance to determine percent ownership (can a value be used instead of writing?)
+        if (_beforeDeposit == true) {
+            // BEFORE deposit, only balances are affected based on percentages
+            for (
+                uint256 ethStakersIndex = 0;
+                ethStakersIndex < ethStakers.length;
+                ethStakersIndex++
+            ) {
+                address addrC = ethStakers[ethStakersIndex];
+                emit addressReferenced(addrC);
+                // ISSUE because if basis points are used for percentages, then precision will be an issue
+                ethStakedBalance[addrC].cBal =
+                    cEthBal *
+                    ethStakedBalance[addrC].cPercent;
+                ethStakedBalance[addrC].hBal =
+                    hEthBal *
+                    ethStakedBalance[addrC].hPercent;
+            }
+        } else {
+            // AFTER deposit, only affected tranche percentages change
+            if (_isCooled == true) {
+                // only cooled tranche percentage numbers are affected by cooled deposit
+                for (
+                    uint256 ethStakersIndex = 0;
+                    ethStakersIndex < ethStakers.length;
+                    ethStakersIndex++
+                ) {
+                    address addrC = ethStakers[ethStakersIndex];
+                    // ISSUE because if basis points are used for percentages, then precision will be an issue
+                    ethStakedBalance[addrC].cPercent =
+                        (ethStakedBalance[addrC].cBal * bps) /
+                        cEthBal;
+                }
+            } else {
+                // only heated tranche percentage numbers are affected by heated deposit
+                for (
+                    uint256 ethStakersIndex = 0;
+                    ethStakersIndex < ethStakers.length;
+                    ethStakersIndex++
+                ) {
+                    address addrC = ethStakers[ethStakersIndex];
+                    // ISSUE because if basis points are used for percentages, then precision will be an issue
+                    ethStakedBalance[addrC].cPercent =
+                        (ethStakedBalance[addrC].hBal * bps) /
+                        hEthBal;
+                }
+            }
+        }
+    }
+
+    // TEMP change ETH/USD
+    function changeCurrentEthUsd(uint _price) public {
+        ethUsd = _price * usdDecimals;
+    }
+
+    function retrieveCurrentEthUsd() public view returns (uint) {
+        return ethUsd;
+    }
+
+    function retrieveCEthPercentBalance() public view returns (uint) {
+        return ethStakedBalance[msg.sender].cPercent;
+    }
+
+    function retrieveHEthPercentBalance() public view returns (uint) {
+        return ethStakedBalance[msg.sender].hPercent;
+    }
+
+    function retrieveCEthBalance() public view returns (uint) {
+        return ethStakedBalance[msg.sender].cBal;
+    }
+
+    function retrieveHEthBalance() public view returns (uint) {
+        return ethStakedBalance[msg.sender].hBal;
     }
 
     function retrieveProtocolCEthBalance() public view returns (uint) {
@@ -128,14 +210,6 @@ contract GwinProtocol is Ownable {
 
     function retrieveProtocolHEthBalance() public view returns (uint) {
         return hEthBal;
-    }
-
-    // Adjust affected tranche percentages
-    function reAdjust() public {
-        // select the affected tranche
-        // loop through stakers[] to get addresses (have heatedStakers[] and cooledStakers[]?)
-        //      use addresses as key to Bal mappings
-        //      use new ETH balance to determine percent ownership (can a value be used instead of writing?)
     }
 
     // ****** TEMPORARY TESTING ******
@@ -267,7 +341,7 @@ contract GwinProtocol is Ownable {
     }
 
     // change to private down the line?
-    function interact() public returns (uint, uint) {
+    function interact() private returns (uint, uint) {
         // old method
         // uint256 currentEthUsd = getCurrentEthUsd(); // current ETH/USD in terms of usdDecimals
 
