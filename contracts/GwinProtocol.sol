@@ -125,45 +125,75 @@ contract GwinProtocol is Ownable {
         lastSettledEthUsd = ethUsd;
     }
 
-    // function withdrawAll() public {}
+    function withdrawAll() public {
+        uint userCooledBal = ethStakedBalance[msg.sender].cBal;
+        uint userHeatedBal = ethStakedBalance[msg.sender].hBal;
+        withdrawFromTranche(false, true, userCooledBal, userHeatedBal);
+    }
 
-    // function withdrawAllFromTranche(bool _isCooled) public {}
+    function withdrawAllFromTranche(bool _isCooled) public {
+        if (_isCooled == true) {
+            uint userCooledBal = ethStakedBalance[msg.sender].cBal;
+            withdrawFromTranche(true, false, userCooledBal, 0);
+        } else {
+            uint userHeatedBal = ethStakedBalance[msg.sender].hBal;
+            withdrawFromTranche(false, true, 0, userHeatedBal);
+        }
+    }
 
-    // function withdrawFromTranche(bool _isCooled, uint _amount) public {
-    //     require(
-    //         protocol_state == PROTOCOL_STATE.OPEN,
-    //         "The Protocol has not been initialized yet."
-    //     );
-    //     require(
-    //         cEthBal > 0 && hEthBal > 0,
-    //         "The Protocol needs initial funds deposited."
-    //     );
-    //     require(_amount > 0, "Amount must be greater than zero.");
-    //     require(_amount < )
+    function withdrawFromTranche(
+        bool _isCooled,
+        bool _isAll,
+        uint _cAmount,
+        uint _hAmount
+    ) public {
+        require(
+            protocol_state == PROTOCOL_STATE.OPEN,
+            "The Protocol has not been initialized yet."
+        );
+        require(
+            cEthBal > 0 && hEthBal > 0,
+            "The Protocol needs initial funds deposited."
+        );
+        require(_cAmount > 0, "Amount must be greater than zero.");
+        // need to ensure _amount is <= balance
+        // require(_amount < ethStakedBalance[msg.sender].cBal);
 
-    //     // Set ETH/USD prices (last settled and current)
-    //     // Interact to rebalance Tranches with new USD price
-    //     interact();
-    //     // ISSUE balances are off until reAdjusted, percents are right
-    //     reAdjust(true, _isCooled);
-    //     // Deposit ETH
-    //     if (_isCooled == true) {
-    //         ethStakedBalance[msg.sender].cBal -= _amount;
-    //         cEthBal -= _amount;
-    //     } else {
-    //         ethStakedBalance[msg.sender].hBal -= _amount;
-    //         hEthBal -= _amount;
-    //     }
-    //     // add to ethStakers array if absent
-    //     if (isUniqueEthStaker[msg.sender] == false) {
-    //         ethStakers.push(msg.sender);
-    //     }
-    //     // Re-Adjust user percentages for affected Tranche
-    //     reAdjust(false, _isCooled);
+        // Set ETH/USD prices (last settled and current)
+        // Interact to rebalance Tranches with new USD price
+        interact();
+        // ISSUE balances are off until reAdjusted, percents are right
+        reAdjust(true, _isCooled);
+        // Deposit ETH
 
-    //     // TEMP until price feed is implements
-    //     lastSettledEthUsd = ethUsd;
-    // }
+        if (_cAmount > 0 && _hAmount > 0) {
+            // Cooled and Heated
+            ethStakedBalance[msg.sender].cBal -= _cAmount;
+            cEthBal -= _cAmount;
+            ethStakedBalance[msg.sender].hBal -= _hAmount;
+            hEthBal -= _hAmount;
+        } else {
+            if (_cAmount > 0 && _hAmount == 0) {
+                // Cooled, No Heated
+                ethStakedBalance[msg.sender].cBal -= _cAmount;
+                cEthBal -= _cAmount;
+            } else if (_cAmount == 0 && _hAmount > 0) {
+                // Heated, No Cooled
+                ethStakedBalance[msg.sender].hBal -= _hAmount;
+                hEthBal -= _hAmount;
+            }
+        }
+
+        // add to ethStakers array if absent
+        if (isUniqueEthStaker[msg.sender] == false) {
+            ethStakers.push(msg.sender);
+        }
+        // Re-Adjust user percentages for affected Tranche
+        reAdjust(false, _isCooled);
+
+        // TEMP until price feed is implements
+        lastSettledEthUsd = ethUsd;
+    }
 
     // Adjust affected tranche percentages
     function reAdjust(bool _beforeDeposit, bool _isCooled) private {
@@ -188,6 +218,7 @@ contract GwinProtocol is Ownable {
                     bps;
             }
         } else {
+            // TO DO allow both percentage numbers to be updated for a double withdraw or deposit
             // AFTER deposit, only affected tranche percentages change
             if (_isCooled == true) {
                 // only cooled tranche percentage numbers are affected by cooled deposit
