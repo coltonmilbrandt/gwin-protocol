@@ -162,10 +162,10 @@ contract GwinProtocol is Ownable {
         // Set ETH/USD prices (last settled and current)
         // Interact to rebalance Tranches with new USD price
         interact();
-        // ISSUE balances are off until reAdjusted, percents are right
-        reAdjust(true, _isCooled);
-        // Deposit ETH
 
+        reAdjust(true, _isCooled);
+
+        // Withdraw ETH
         if (_cAmount > 0 && _hAmount > 0) {
             // Cooled and Heated
             ethStakedBalance[msg.sender].cBal -= _cAmount;
@@ -184,10 +184,12 @@ contract GwinProtocol is Ownable {
             }
         }
 
+        // ISSUE subtract not add if no more balance
         // add to ethStakers array if absent
         if (isUniqueEthStaker[msg.sender] == false) {
             ethStakers.push(msg.sender);
         }
+        // ISSUE don't want to have to call this twice
         // Re-Adjust user percentages for affected Tranche
         reAdjust(false, _isCooled);
 
@@ -218,7 +220,7 @@ contract GwinProtocol is Ownable {
                     bps;
             }
         } else {
-            // TO DO allow both percentage numbers to be updated for a double withdraw or deposit
+            // ISSUE allow both percentage numbers to be updated for a double withdraw or deposit
             // AFTER deposit, only affected tranche percentages change
             if (_isCooled == true) {
                 // only cooled tranche percentage numbers are affected by cooled deposit
