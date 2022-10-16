@@ -235,7 +235,7 @@ contract GwinProtocol is Ownable {
                 ethStakersIndex++
             ) {
                 address addrC = ethStakers[ethStakersIndex];
-                // ISSUE because if basis points are used for percentages, then precision will be an issue
+                // ISSUE because if basis points are used for percentages, then precision will be an issue (#1)
                 ethStakedBalance[addrC].cBal =
                     (cEthBal * ethStakedBalance[addrC].cPercent) /
                     bps;
@@ -327,6 +327,7 @@ contract GwinProtocol is Ownable {
         ethUsd = _price * usdDecimals;
     }
 
+    // ISSUE #I5 needs refactored for addresses rather than index because index changes
     function retrieveCurrentEthUsd() public view returns (uint) {
         return ethUsd;
     }

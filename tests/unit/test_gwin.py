@@ -173,7 +173,7 @@ def test_use_protocol():
     # Assert
     assert gwin_protocol.retrieveCurrentEthUsd() == 130000000000;
     # Act
-    txFour = gwin_protocol.withdrawAll(True, False, {"from": non_owner})
+    txFour = gwin_protocol.withdrawAll(True, False, {"from": non_owner}) # #I2
     txFour.wait(1)
     # Assert
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 888 # cEth in protocol
@@ -201,6 +201,9 @@ def test_use_protocol():
     assert rounded(gwin_protocol.retrieveHEthBalance.call(2, {"from": account})) == 96 # hEth for account
     assert gwin_protocol.retrieveHEthPercentBalance.call(2, {"from": account}) == 794 # hEth % for account 
 
+    
+    #I3 Deposit to both Tranches
+    #I4 Withdrawal from both Tranches
     
 
     # x = gwin_protocol.retrieveBalance.call({"from": account})
