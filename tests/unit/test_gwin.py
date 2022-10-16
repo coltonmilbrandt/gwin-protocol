@@ -163,6 +163,32 @@ def test_use_protocol():
     assert gwin_protocol.retrieveHEthBalance.call(1, {"from": account}) == 0 # hEth for non_owner
     assert gwin_protocol.retrieveHEthPercentBalance.call(1, {"from": account}) == 0 # hEth % for non_owner
 
+    # # Act
+    # gwin_protocol.changeCurrentEthUsd(1300, {"from": account})
+    # # Assert
+    # assert gwin_protocol.retrieveCurrentEthUsd() == 130000000000;
+    # # Act
+    # txFour = gwin_protocol.withdrawAll(True, True, {"from": non_owner})
+    # txFour.wait(1)
+    # # Assert
+    # assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 888 # cEth in protocol
+    # assert rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account})) == 1215 # hEth in protocol
+
+    # assert rounded(gwin_protocol.retrieveCEthBalance.call(0, {"from": account})) == 888 # cEth for account 
+    # assert gwin_protocol.retrieveCEthPercentBalance.call(0, {"from": account}) == 10000 # cEth % for account
+    # assert rounded(gwin_protocol.retrieveHEthBalance.call(0, {"from": account})) == 1118 # hEth for account
+    # assert gwin_protocol.retrieveHEthPercentBalance.call(0, {"from": account}) == 9205 # hEth % for account 
+
+    # assert rounded(gwin_protocol.retrieveCEthBalance.call(1, {"from": account})) == 0 # cEth for non_owner
+    # assert gwin_protocol.retrieveCEthPercentBalance.call(1, {"from": account}) == 0 # cEth % non_owner
+    # assert gwin_protocol.retrieveHEthBalance.call(1, {"from": account}) == 0 # hEth for non_owner
+    # assert gwin_protocol.retrieveHEthPercentBalance.call(1, {"from": account}) == 0 # hEth % for non_owner
+
+    # assert rounded(gwin_protocol.retrieveCEthBalance.call(2, {"from": account})) == 0 # cEth for account 
+    # assert gwin_protocol.retrieveCEthPercentBalance.call(2, {"from": account}) == 0 # cEth % for account
+    # assert rounded(gwin_protocol.retrieveHEthBalance.call(2, {"from": account})) == 96 # hEth for account
+    # assert gwin_protocol.retrieveHEthPercentBalance.call(2, {"from": account}) == 794 # hEth % for account 
+
     
 
     # x = gwin_protocol.retrieveBalance.call({"from": account})
