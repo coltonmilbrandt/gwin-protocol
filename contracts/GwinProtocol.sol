@@ -131,26 +131,30 @@ contract GwinProtocol is Ownable {
         lastSettledEthUsd = ethUsd;
     }
 
+    // gwin_protocol.withdrawAll(True, True, {"from": non_owner})
     function withdrawAll(bool _isCooled, bool _isHeated) public {
-        uint userCooledBal = ethStakedBalance[msg.sender].cBal;
-        uint userHeatedBal = ethStakedBalance[msg.sender].hBal;
+        // 10_000 basis points = 100% of funds
         if (_isCooled == true && _isHeated == false) {
             // Cooled only
-            withdrawFromTranche(true, false, userCooledBal, 0);
+            withdrawFromTranche(true, false, 10_000, 0);
         } else if (_isCooled == false && _isHeated == true) {
             // Heated only
-            withdrawFromTranche(false, true, 0, userHeatedBal);
+            withdrawFromTranche(false, true, 0, 10_000);
         } else if (_isCooled == true && _isHeated == true) {
             // Cooled and Heated
-            withdrawFromTranche(true, true, userCooledBal, userHeatedBal);
+            withdrawFromTranche(true, true, 10_000, 10_000);
         }
+        // ISSUE is that withdrawal amount is set before interaction!!!
     }
 
+    // CREATE withdrawalPreview()
+
+    // Needs to be refactored for percentages
     function withdrawFromTranche(
         bool _isCooled,
         bool _isHeated,
-        uint _cAmount,
-        uint _hAmount
+        uint _cPercent,
+        uint _hPercent
     ) public {
         require(
             protocol_state == PROTOCOL_STATE.OPEN,
@@ -161,7 +165,7 @@ contract GwinProtocol is Ownable {
             "The Protocol needs initial funds deposited."
         );
         require(
-            _cAmount > 0 || _hAmount > 0,
+            _cPercent > 0 || _hPercent > 0,
             "Amount must be greater than zero."
         );
         require(_isCooled == true || _isHeated == true);
@@ -172,28 +176,31 @@ contract GwinProtocol is Ownable {
 
         reAdjust(true, _isCooled, _isHeated);
 
+        uint cAmount = (ethStakedBalance[msg.sender].cBal * _cPercent) / bps;
+        uint hAmount = (ethStakedBalance[msg.sender].hBal * _hPercent) / bps;
+
         // Withdraw ETH
-        if (_cAmount > 0 && _hAmount > 0) {
+        if (cAmount > 0 && hAmount > 0) {
             // Cooled and Heated
             require(
-                _cAmount <= ethStakedBalance[msg.sender].cBal &&
-                    _hAmount <= ethStakedBalance[msg.sender].hBal
+                cAmount <= ethStakedBalance[msg.sender].cBal &&
+                    hAmount <= ethStakedBalance[msg.sender].hBal
             );
-            ethStakedBalance[msg.sender].cBal -= _cAmount;
-            cEthBal -= _cAmount;
-            ethStakedBalance[msg.sender].hBal -= _hAmount;
-            hEthBal -= _hAmount;
+            ethStakedBalance[msg.sender].cBal -= cAmount;
+            cEthBal -= cAmount;
+            ethStakedBalance[msg.sender].hBal -= hAmount;
+            hEthBal -= hAmount;
         } else {
-            if (_cAmount > 0 && _hAmount == 0) {
+            if (cAmount > 0 && hAmount == 0) {
                 // Cooled, No Heated
-                require(_cAmount <= ethStakedBalance[msg.sender].cBal);
-                ethStakedBalance[msg.sender].cBal -= _cAmount;
-                cEthBal -= _cAmount;
-            } else if (_cAmount == 0 && _hAmount > 0) {
+                require(cAmount <= ethStakedBalance[msg.sender].cBal);
+                ethStakedBalance[msg.sender].cBal -= cAmount;
+                cEthBal -= cAmount;
+            } else if (cAmount == 0 && hAmount > 0) {
                 // Heated, No Cooled
-                require(_hAmount <= ethStakedBalance[msg.sender].hBal);
-                ethStakedBalance[msg.sender].hBal -= _hAmount;
-                hEthBal -= _hAmount;
+                require(hAmount <= ethStakedBalance[msg.sender].hBal);
+                ethStakedBalance[msg.sender].hBal -= hAmount;
+                hEthBal -= hAmount;
             }
         }
 
