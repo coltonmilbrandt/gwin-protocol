@@ -39,7 +39,7 @@ contract GwinProtocol is Ownable {
     // ********* Decimal Values *********
     uint256 decimals = 10**18;
     uint256 usdDecimals = 10**8;
-    uint256 bps = 10**4;
+    uint256 bps = 10**12;
 
     // *********  Test Values   *********
     uint256 lastSettledEthUsd;
@@ -72,10 +72,10 @@ contract GwinProtocol is Ownable {
         }
         uint splitAmount = msg.value / 2;
         ethStakedBalance[msg.sender].cBal += splitAmount;
-        ethStakedBalance[msg.sender].cPercent = 10000;
+        ethStakedBalance[msg.sender].cPercent = 1000000000000;
         cEthBal = splitAmount;
         ethStakedBalance[msg.sender].hBal += splitAmount;
-        ethStakedBalance[msg.sender].hPercent = 10000;
+        ethStakedBalance[msg.sender].hPercent = 1000000000000;
         hEthBal = splitAmount;
         pEthBal = cEthBal + hEthBal;
         protocol_state = PROTOCOL_STATE.OPEN;
@@ -133,16 +133,16 @@ contract GwinProtocol is Ownable {
 
     // gwin_protocol.withdrawAll(True, True, {"from": non_owner})
     function withdrawAll(bool _isCooled, bool _isHeated) public {
-        // 10_000 basis points = 100% of funds
+        // 100_0000000000 basis points = 100% of funds
         if (_isCooled == true && _isHeated == false) {
             // Cooled only
-            withdrawFromTranche(true, false, 10_000, 0);
+            withdrawFromTranche(true, false, bps, 0);
         } else if (_isCooled == false && _isHeated == true) {
             // Heated only
-            withdrawFromTranche(false, true, 0, 10_000);
+            withdrawFromTranche(false, true, 0, bps);
         } else if (_isCooled == true && _isHeated == true) {
             // Cooled and Heated
-            withdrawFromTranche(true, true, 10_000, 10_000);
+            withdrawFromTranche(true, true, bps, bps);
         }
         // ISSUE is that withdrawal amount is set before interaction!!!
     }
@@ -204,7 +204,6 @@ contract GwinProtocol is Ownable {
             }
         }
 
-        // ISSUE don't want to have to call this twice
         // Re-Adjust user percentages for affected Tranche
         reAdjust(false, _isCooled, _isHeated);
 
@@ -473,14 +472,14 @@ contract GwinProtocol is Ownable {
         // get tranche balance and basis points for expected return
         if (_isCooled == true) {
             trancheBal = cEthBal; // in Wei
-            r = -5000; // basis points
+            r = -50_0000000000; // basis points
         } else {
             trancheBal = hEthBal; // in Wei
-            r = 5000; // basis points
+            r = 50_0000000000; // basis points
         }
         require(trancheBal > 0, "Tranche must have a balance.");
         require(
-            r == -5000 || r == 5000,
+            r == -50_0000000000 || r == 50_0000000000,
             "Tranche must have a valid multiplier value."
         );
         int256 trancheChange = (int(trancheBal) * int(_currentEthUsd)) -

@@ -10,6 +10,8 @@ from brownie import (
     Contract,
 )
 
+import math
+
 # eth_utils needs to be installed "pip3 install eth_utils"
 import eth_utils
 
@@ -41,9 +43,22 @@ def get_account(index=None, id=None):
     return accounts.add(config["wallets"]["from_key"])
 
 def rounded(val):
-    val = val / 10000000000000000
+    val = val / 100000000
     val = int(val)
     return val
+
+# 100_0000000000
+#  99_9999999998
+
+def roundedDec(val):
+    val = val / 10
+    val = round_up(val)
+    val = val * 10
+    return val
+
+def round_up(n, decimals=0):
+    multiplier = 10 ** decimals
+    return math.ceil(n * multiplier) / multiplier
 
 # *args allows for any number of arguments afterward
 def encode_function_data(initializer=None, *args):
