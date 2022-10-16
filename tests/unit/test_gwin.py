@@ -126,7 +126,7 @@ def test_use_protocol():
     # Assert
     assert gwin_protocol.retrieveCurrentEthUsd() == 120000000000;
     # Act
-    txThree = gwin_protocol.depositToTranche(True, {"from": non_owner, "value": Web3.toWei(1, "ether")})
+    txThree = gwin_protocol.depositToTranche(True, False, Web3.toWei(1, "ether"), 0, {"from": non_owner, "value": Web3.toWei(1, "ether")})
     txThree.wait(1)
     # Assert
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 1016 # cEth in protocol
@@ -147,7 +147,7 @@ def test_use_protocol():
     # Assert
     assert gwin_protocol.retrieveCurrentEthUsd() == 140000000000;
     # Act
-    txThree = gwin_protocol.depositToTranche(False, {"from": non_owner_two, "value": Web3.toWei(1, "ether")})
+    txThree = gwin_protocol.depositToTranche(False, True, Web3.toWei(1, "ether"), 0, {"from": non_owner_two, "value": Web3.toWei(1, "ether")})
     txThree.wait(1)
     # Assert
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 941 # cEth in protocol

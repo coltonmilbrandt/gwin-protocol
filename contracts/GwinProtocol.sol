@@ -85,7 +85,12 @@ contract GwinProtocol is Ownable {
         // end TEMP
     }
 
-    function depositToTranche(bool _isCooled) public payable {
+    function depositToTranche(
+        bool _isCooled,
+        bool _isHeated,
+        uint _cAmount,
+        uint _hAmount
+    ) public payable {
         require(
             protocol_state == PROTOCOL_STATE.OPEN,
             "The Protocol has not been initialized yet."
@@ -95,31 +100,32 @@ contract GwinProtocol is Ownable {
             "The Protocol needs initial funds deposited."
         );
         require(msg.value > 0, "Amount must be greater than zero.");
+        require(_isCooled == true || _isHeated == true);
+        require(_cAmount + _hAmount <= msg.value);
 
         // Set ETH/USD prices (last settled and current)
         // Interact to rebalance Tranches with new USD price
         interact();
         // ISSUE balances are off until reAdjusted, percents are right
-        reAdjust(true, _isCooled);
+        reAdjust(true, _isCooled, _isHeated);
         // Deposit ETH
-        if (_isCooled == true) {
-            // this is the only correct balance for the tranche!
+        if (_isCooled == true && _isHeated == false) {
             ethStakedBalance[msg.sender].cBal += msg.value;
-            // ethStakedBalance[msg.sender].percent =
-            //     ethStakedBalance[msg.sender].balance /
-            //     cEthBal;
             cEthBal += msg.value;
-            // add to ethStakers array if absent
-        } else {
+        } else if (_isCooled == false && _isHeated == true) {
             ethStakedBalance[msg.sender].hBal += msg.value;
             hEthBal += msg.value;
-            // add to ethStakers array if absent
+        } else if (_isCooled == true && _isHeated == true) {
+            ethStakedBalance[msg.sender].cBal += _cAmount;
+            cEthBal += msg.value;
+            ethStakedBalance[msg.sender].hBal += _hAmount;
+            hEthBal += msg.value;
         }
         if (isUniqueEthStaker[msg.sender] == false) {
             ethStakers.push(msg.sender);
         }
         // Re-Adjust user percentages for affected Tranche
-        reAdjust(false, _isCooled);
+        reAdjust(false, _isCooled, _isHeated);
 
         // TEMP until price feed is implements
         lastSettledEthUsd = ethUsd;
@@ -140,7 +146,6 @@ contract GwinProtocol is Ownable {
         }
     }
 
-    // maybe do _isCooled and _isHeated
     function withdrawFromTranche(
         bool _isCooled,
         bool _isHeated,
@@ -159,14 +164,13 @@ contract GwinProtocol is Ownable {
             _cAmount > 0 || _hAmount > 0,
             "Amount must be greater than zero."
         );
-        // need to ensure _amount is <= balance
-        // require(_amount < ethStakedBalance[msg.sender].cBal);
+        require(_isCooled == true || _isHeated == true);
 
         // Set ETH/USD prices (last settled and current)
         // Interact to rebalance Tranches with new USD price
         interact();
 
-        reAdjust(true, _isCooled);
+        reAdjust(true, _isCooled, _isHeated);
 
         // Withdraw ETH
         if (_cAmount > 0 && _hAmount > 0) {
@@ -195,9 +199,7 @@ contract GwinProtocol is Ownable {
 
         // ISSUE don't want to have to call this twice
         // Re-Adjust user percentages for affected Tranche
-        reAdjust(false, _isCooled);
-        // TEMP having to run it twice
-        reAdjust(false, !_isCooled);
+        reAdjust(false, _isCooled, _isHeated);
 
         // TEMP until price feed is implemented
         lastSettledEthUsd = ethUsd;
@@ -209,12 +211,16 @@ contract GwinProtocol is Ownable {
     }
 
     // Adjust affected tranche percentages
-    function reAdjust(bool _beforeDeposit, bool _isCooled) private {
+    function reAdjust(
+        bool _beforeTx,
+        bool _isCooled,
+        bool _isHeated
+    ) private {
         // select the affected tranche
         // loop through stakers[] to get addresses (have ethStakers[] and ethStakers[]?)
         //      use addresses as key to Bal mappings
         //      use new ETH balance to determine percent ownership (can a value be used instead of writing?)
-        if (_beforeDeposit == true) {
+        if (_beforeTx == true) {
             // BEFORE deposit, only balances are affected based on percentages
             for (
                 uint256 ethStakersIndex = 0;
@@ -231,12 +237,12 @@ contract GwinProtocol is Ownable {
                     bps;
             }
         } else {
-            // ISSUE allow both percentage numbers to be updated for a double withdraw or deposit
-            // AFTER deposit, only affected tranche percentages change
-            uint indexToRemove;
-            bool indexNeedsRemoved;
-            if (_isCooled == true) {
-                // only cooled tranche percentage numbers are affected by cooled deposit
+            // AFTER tx, only affected tranche percentages change
+            // ISSUE allow both percentage numbers to be updated for deposit (withdrawal done)
+            uint indexToRemove; // to track index of user in ethStakers array if account emptied
+            bool indexNeedsRemoved; // to differentiate indexToRemove == 0 from default ethStakers[0]
+            if (_isCooled == true && _isHeated == false) {
+                // only Cooled tranche percentage numbers are affected by cooled tx
                 for (
                     uint256 ethStakersIndex = 0;
                     ethStakersIndex < ethStakers.length;
@@ -247,7 +253,7 @@ contract GwinProtocol is Ownable {
                     ethStakedBalance[addrC].cPercent =
                         (ethStakedBalance[addrC].cBal * bps) /
                         cEthBal;
-                    // Flag index and store for removal AFTER calculations are finished
+                    // Flags index and stores for removal AFTER calculations are finished
                     if (
                         ethStakedBalance[addrC].cBal <= 0 &&
                         ethStakedBalance[addrC].hBal <= 0
@@ -256,8 +262,8 @@ contract GwinProtocol is Ownable {
                         indexToRemove = ethStakersIndex;
                     }
                 }
-            } else {
-                // only heated tranche percentage numbers are affected by heated deposit
+            } else if (_isCooled == false && _isHeated == true) {
+                // only Heated tranche percentage numbers are affected by heated tx
                 for (
                     uint256 ethStakersIndex = 0;
                     ethStakersIndex < ethStakers.length;
@@ -268,7 +274,31 @@ contract GwinProtocol is Ownable {
                     ethStakedBalance[addrC].hPercent =
                         (ethStakedBalance[addrC].hBal * bps) /
                         hEthBal;
-                    // Flag index and store for removal AFTER calculations are finished
+                    // Flags index and stores for removal AFTER calculations are finished
+                    if (
+                        ethStakedBalance[addrC].cBal <= 0 &&
+                        ethStakedBalance[addrC].hBal <= 0
+                    ) {
+                        indexNeedsRemoved = true;
+                        indexToRemove = ethStakersIndex;
+                    }
+                }
+            } else {
+                // Cooled and Heated tranche percentage numbers are affected by tx
+                for (
+                    uint256 ethStakersIndex = 0;
+                    ethStakersIndex < ethStakers.length;
+                    ethStakersIndex++
+                ) {
+                    address addrC = ethStakers[ethStakersIndex];
+                    // ISSUE because if basis points are used for percentages, then precision will be an issue
+                    ethStakedBalance[addrC].cPercent =
+                        (ethStakedBalance[addrC].cBal * bps) /
+                        cEthBal;
+                    ethStakedBalance[addrC].hPercent =
+                        (ethStakedBalance[addrC].hBal * bps) /
+                        hEthBal;
+                    // Flags index and stores for removal AFTER calculations are finished
                     if (
                         ethStakedBalance[addrC].cBal <= 0 &&
                         ethStakedBalance[addrC].hBal <= 0
@@ -278,10 +308,10 @@ contract GwinProtocol is Ownable {
                     }
                 }
             }
-        }
-        // Remove user if balances are empty, done after calculation so array indexes are not disrupted
-        if (indexNeedsRemoved == true) {
-            removeFromArray(indexToRemove);
+            // Remove user if balances are empty, done after calculation so array indexes are not disrupted
+            if (indexNeedsRemoved == true) {
+                removeFromArray(indexToRemove);
+            }
         }
     }
 
