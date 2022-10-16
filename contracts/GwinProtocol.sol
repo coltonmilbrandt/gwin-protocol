@@ -332,24 +332,28 @@ contract GwinProtocol is Ownable {
         return ethUsd;
     }
 
-    function retrieveCEthPercentBalance(uint _user) public view returns (uint) {
-        address r = ethStakers[_user];
-        return ethStakedBalance[r].cPercent;
+    function retrieveCEthPercentBalance(address _user)
+        public
+        view
+        returns (uint)
+    {
+        return ethStakedBalance[_user].cPercent;
     }
 
-    function retrieveHEthPercentBalance(uint _user) public view returns (uint) {
-        address r = ethStakers[_user];
-        return ethStakedBalance[r].hPercent;
+    function retrieveHEthPercentBalance(address _user)
+        public
+        view
+        returns (uint)
+    {
+        return ethStakedBalance[_user].hPercent;
     }
 
-    function retrieveCEthBalance(uint _user) public view returns (uint) {
-        address r = ethStakers[_user];
-        return ethStakedBalance[r].cBal;
+    function retrieveCEthBalance(address _user) public view returns (uint) {
+        return ethStakedBalance[_user].cBal;
     }
 
-    function retrieveHEthBalance(uint _user) public view returns (uint) {
-        address r = ethStakers[_user];
-        return ethStakedBalance[r].hBal;
+    function retrieveHEthBalance(address _user) public view returns (uint) {
+        return ethStakedBalance[_user].hBal;
     }
 
     function retrieveProtocolCEthBalance() public view returns (uint) {
