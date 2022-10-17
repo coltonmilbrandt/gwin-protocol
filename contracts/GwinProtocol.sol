@@ -47,6 +47,7 @@ contract GwinProtocol is Ownable {
     uint256 hEthBal;
     uint256 cEthBal;
     uint256 pEthBal;
+    // Potential ISSUE if these can be changed, but I doubt that's the case
 
     // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor
     IERC20 public gwinToken;
