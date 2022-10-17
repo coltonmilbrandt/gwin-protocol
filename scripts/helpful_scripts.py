@@ -54,9 +54,9 @@ def extra_rounded(val):
     return val
 
 def rnd(val):
-    val = val / 100
+    val = val / 1000
     val = round_up(val)
-    val = val * 10
+    val = val * 1000
     val = int(val)
     return val
 
