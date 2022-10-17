@@ -47,6 +47,19 @@ def rounded(val):
     val = int(val)
     return val
 
+def extra_rounded(val):
+    val = val / 100000000000
+    val = round_up(val)
+    val = int(val)
+    return val
+
+def rnd(val):
+    val = val / 100
+    val = round_up(val)
+    val = val * 10
+    val = int(val)
+    return val
+
 # 100_0000000000
 #  99_9999999998
 
@@ -54,6 +67,7 @@ def roundedDec(val):
     val = val / 10
     val = round_up(val)
     val = val * 10
+    val = int(val)
     return val
 
 def round_up(n, decimals=0):

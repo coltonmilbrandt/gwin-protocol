@@ -73,10 +73,10 @@ contract GwinProtocol is Ownable {
         }
         uint splitAmount = msg.value / 2;
         ethStakedBalance[msg.sender].cBal += splitAmount;
-        ethStakedBalance[msg.sender].cPercent = 1000000000000;
+        ethStakedBalance[msg.sender].cPercent = bps;
         cEthBal = splitAmount;
         ethStakedBalance[msg.sender].hBal += splitAmount;
-        ethStakedBalance[msg.sender].hPercent = 1000000000000;
+        ethStakedBalance[msg.sender].hPercent = bps;
         hEthBal = splitAmount;
         pEthBal = cEthBal + hEthBal;
         protocol_state = PROTOCOL_STATE.OPEN;
@@ -118,9 +118,9 @@ contract GwinProtocol is Ownable {
             hEthBal += msg.value;
         } else if (_isCooled == true && _isHeated == true) {
             ethStakedBalance[msg.sender].cBal += _cAmount;
-            cEthBal += msg.value;
+            cEthBal += _cAmount;
             ethStakedBalance[msg.sender].hBal += _hAmount;
-            hEthBal += msg.value;
+            hEthBal += _hAmount;
         }
         if (isUniqueEthStaker[msg.sender] == false) {
             ethStakers.push(msg.sender);
@@ -191,17 +191,20 @@ contract GwinProtocol is Ownable {
             cEthBal -= cAmount;
             ethStakedBalance[msg.sender].hBal -= hAmount;
             hEthBal -= hAmount;
+            payable(msg.sender).transfer(cAmount + hAmount);
         } else {
             if (cAmount > 0 && hAmount == 0) {
                 // Cooled, No Heated
                 require(cAmount <= ethStakedBalance[msg.sender].cBal);
                 ethStakedBalance[msg.sender].cBal -= cAmount;
                 cEthBal -= cAmount;
+                payable(msg.sender).transfer(cAmount);
             } else if (cAmount == 0 && hAmount > 0) {
                 // Heated, No Cooled
                 require(hAmount <= ethStakedBalance[msg.sender].hBal);
                 ethStakedBalance[msg.sender].hBal -= hAmount;
                 hEthBal -= hAmount;
+                payable(msg.sender).transfer(hAmount);
             }
         }
 
@@ -330,6 +333,10 @@ contract GwinProtocol is Ownable {
     // ISSUE #I5 needs refactored for addresses rather than index because index changes
     function retrieveCurrentEthUsd() public view returns (uint) {
         return ethUsd;
+    }
+
+    function retrieveEthInContract() public view returns (uint) {
+        return address(this).balance;
     }
 
     function retrieveCEthPercentBalance(address _user)
