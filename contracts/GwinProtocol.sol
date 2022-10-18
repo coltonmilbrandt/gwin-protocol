@@ -3,9 +3,10 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-contract GwinProtocol is Ownable {
+contract GwinProtocol is Ownable, ReentrancyGuard {
     struct Bal {
         uint cBal;
         uint cPercent;
@@ -59,7 +60,7 @@ contract GwinProtocol is Ownable {
         protocol_state = PROTOCOL_STATE.CLOSED;
     }
 
-    function initializeProtocol() public payable {
+    function initializeProtocol() external payable {
         require(
             protocol_state == PROTOCOL_STATE.CLOSED,
             "The Protocol is already initialized."
@@ -91,7 +92,7 @@ contract GwinProtocol is Ownable {
         bool _isHeated,
         uint _cAmount,
         uint _hAmount
-    ) public payable {
+    ) external payable {
         require(
             protocol_state == PROTOCOL_STATE.OPEN,
             "The Protocol has not been initialized yet."
@@ -132,36 +133,31 @@ contract GwinProtocol is Ownable {
         lastSettledEthUsd = ethUsd;
     }
 
-    // gwin_protocol.withdrawAll(True, True, {"from": non_owner})
-    function withdrawAll(bool _isCooled, bool _isHeated) public {
-        // 100_0000000000 basis points = 100% of funds
-        if (_isCooled == true && _isHeated == false) {
-            // Cooled only
-            withdrawFromTranche(true, false, 0, 0, true);
-        } else if (_isCooled == false && _isHeated == true) {
-            // Heated only
-            withdrawFromTranche(false, true, 0, 0, true);
-        } else if (_isCooled == true && _isHeated == true) {
-            // Cooled and Heated
-            withdrawFromTranche(true, true, 0, 0, true);
-        }
-        // ISSUE is that withdrawal amount is set before interaction!!!
-    }
-
     // // CREATE withdrawalPreview()
     // function withdrawalPreview() public view returns (uint, uint) {
-    //     interact();
-    //     reAdjust(true, _isCooled, _isHeated);
+    //     (userHeatedBalance, userCooledBalance) = previewUserBalance();
     // }
 
-    // Needs to be refactored for percentages
+    function previewUserBalance() public view returns (uint, uint) {
+        uint heatedBalance;
+        uint cooledBalance;
+        (heatedBalance, cooledBalance) = simulateInteract(
+            retrieveCurrentEthUsd()
+        );
+        uint userHeatedBalance = (heatedBalance *
+            ethStakedBalance[msg.sender].hPercent) / bps;
+        uint userCooledBalance = (cooledBalance *
+            ethStakedBalance[msg.sender].cPercent) / bps;
+        return (userHeatedBalance, userCooledBalance);
+    }
+
     function withdrawFromTranche(
         bool _isCooled,
         bool _isHeated,
         uint _cAmount,
         uint _hAmount,
         bool _isAll
-    ) public {
+    ) external nonReentrant {
         require(
             protocol_state == PROTOCOL_STATE.OPEN,
             "The Protocol has not been initialized yet."
@@ -581,7 +577,6 @@ contract GwinProtocol is Ownable {
         return (hEthBal, cEthBal);
     }
 
-    // I want to explicitly know pEthBal to pass in here, not calculate it
     function reallocate(
         uint256 _currentEthUsd, // in usdDecimal form
         int256 _cUsdBal, // in usdDecimal form

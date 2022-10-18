@@ -47,6 +47,11 @@ def rounded(val):
     val = int(val)
     return val
 
+def short_round(val):
+    val = val / 10000000000000000
+    val = int(val)
+    return val
+
 def extra_rounded(val):
     val = val / 100000000000
     val = round_up(val)
@@ -61,9 +66,6 @@ def rnd(val):
     val = val * 1000
     val = int(val)
     return val
-
-# 100_0000000000
-#  99_9999999998
 
 def roundedDec(val):
     val = val / 10
