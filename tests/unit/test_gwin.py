@@ -170,6 +170,10 @@ def test_use_protocol():
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 9_4174225245 # cEth in protocol
     assert rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account})) == 12_5825774754 # hEth in protocol
 
+    valOne, valTwo = gwin_protocol.simulateInteract.call(1400_00000000)
+    assert rounded(valTwo) == 9_4174225245
+    assert rounded(valOne) == 12_5825774754
+
     assert rounded(gwin_protocol.retrieveCEthBalance.call(account.address, {"from": account})) == 8_4911186696 # cEth for account 
     assert gwin_protocol.retrieveCEthPercentBalance.call(account.address, {"from": account}) == 90_1639344262 # cEth % for account
     assert rounded(gwin_protocol.retrieveHEthBalance.call(account.address, {"from": account})) == 11_5825774754 # hEth for account
@@ -200,6 +204,10 @@ def test_use_protocol():
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 8_8804772808 # cEth in protocol
     assert rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account})) == 12_1507433794 # hEth in protocol
 
+    valOne, valTwo = gwin_protocol.simulateInteract.call(1300_00000000)
+    assert rounded(valTwo) == 8_8804772808
+    assert rounded(valOne) == 12_1507433794
+
     assert rounded(gwin_protocol.retrieveCEthBalance.call(account.address, {"from": account})) == 8_8804772808 # cEth for account 
     assert roundedDec(gwin_protocol.retrieveCEthPercentBalance.call(account.address, {"from": account})) == 100_0000000000 # cEth % for account
     assert rounded(gwin_protocol.retrieveHEthBalance.call(account.address, {"from": account})) == 11_1850633823 # hEth for account
@@ -229,6 +237,10 @@ def test_use_protocol():
     # Assert
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 9_5828598866 # cEth in protocol
     assert rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account})) == 13_4483607736 # hEth in protocol
+
+    valOne, valTwo = gwin_protocol.simulateInteract.call(1150_00000000) # Test view function can estimate balances as well
+    assert rounded(valTwo) == 9_5828598866
+    assert rounded(valOne) == 13_4483607736
 
     # Owner 
     assert rounded(gwin_protocol.retrieveCEthBalance.call(account.address, {"from": account})) == 9_5828598866 # cEth for account 
@@ -273,6 +285,10 @@ def test_use_protocol():
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 12_8519507547 # cEth in protocol 
     assert rnd(rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account}))) == rnd(14_1792699054) # hEth in protocol
 
+    valOne, valTwo = gwin_protocol.simulateInteract.call(1100_00000000) # Test view function can estimate balances as well
+    assert rounded(valTwo) == 12_8519507547
+    assert rnd(rounded(valOne)) == rnd(14_1792699054)
+
     # Owner 
     assert rounded(gwin_protocol.retrieveCEthBalance.call(account.address, {"from": account})) == 9_8519507547 # cEth for account 
     assert roundedDec(gwin_protocol.retrieveCEthPercentBalance.call(account.address, {"from": account})) == roundedDec(76_6572401556) # cEth % for account
@@ -315,6 +331,10 @@ def test_use_protocol():
 
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 13_5293606613 # cEth in protocol 
     assert rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account})) == 12_6528057772 # hEth in protocol
+
+    valOne, valTwo = gwin_protocol.simulateInteract.call(1000_00000000) # Test view function can estimate balances as well
+    assert rounded(valTwo) == 13_5293606613
+    assert rounded(valOne) == 12_6528057772
 
     # Owner 
     assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(account.address, {"from": account}))) == rnd(10_3712344937) # cEth for account 
@@ -359,6 +379,10 @@ def test_use_protocol():
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 9_2120216726 # cEth in protocol 
     assert rnd(rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account}))) == rnd(13_0989776957) # hEth in protocol
 
+    valOne, valTwo = gwin_protocol.simulateInteract.call(1300_00000000) # Test view function can estimate balances as well
+    assert rounded(valTwo) == 9_2120216726
+    assert rnd(rounded(valOne)) == rnd(13_0989776957)
+
     # Owner 
     assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(account.address, {"from": account}))) == rnd(9_2120216726) # cEth for account 
     assert roundedDec(gwin_protocol.retrieveCEthPercentBalance.call(account.address, {"from": account})) == roundedDec(100_0000000000) # cEth % for account
@@ -401,6 +425,10 @@ def test_use_protocol():
 
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 11_8257033612 # cEth in protocol 
     assert rnd(rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account}))) == rnd(14_4852960071) # hEth in protocol
+
+    valOne, valTwo = gwin_protocol.simulateInteract.call(1400_00000000) # Test view function can estimate balances as well
+    assert rounded(valTwo) == 11_8257033612
+    assert rnd(rounded(valOne)) == rnd(14_4852960071)
 
     # Owner 
     assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(account.address, {"from": account}))) == rnd(8_8257033612) # cEth for account 
@@ -452,6 +480,10 @@ def test_use_protocol():
     assert rnd(rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account}))) == rnd(11_8368541066) # cEth in protocol 
     assert rnd(rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account}))) == rnd(13_4741452618) # hEth in protocol
 
+    valOne, valTwo = gwin_protocol.simulateInteract.call(1300_00000000) # Test view function can estimate balances as well
+    assert rnd(rounded(valTwo)) == rnd(11_8368541066)
+    assert rnd(rounded(valOne)) == rnd(13_4741452618)
+
     # Owner 
     assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(account.address, {"from": account}))) == rnd(9_2071829835) # cEth for account 
     assert rnd(roundedDec(gwin_protocol.retrieveCEthPercentBalance.call(account.address, {"from": account}))) == rnd(roundedDec(77_7840370473)) # cEth % for account
@@ -501,6 +533,10 @@ def test_use_protocol():
     assert rnd(rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account}))) == rnd(10_9966845062) # cEth in protocol 
     assert rnd(rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account}))) == rnd(13_6143148621) # hEth in protocol
 
+    valOne, valTwo = gwin_protocol.simulateInteract.call(1500_00000000) # Test view function can estimate balances as well
+    assert rnd(rounded(valTwo)) == rnd(10_9966845062)
+    assert rnd(rounded(valOne)) == rnd(13_6143148621)
+
     # Owner 
     assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(account.address, {"from": account}))) == rnd(8_5536651503) # cEth for account 
     assert rnd(roundedDec(gwin_protocol.retrieveCEthPercentBalance.call(account.address, {"from": account}))) == rnd(roundedDec(77_7840370473)) # cEth % for account
@@ -549,6 +585,10 @@ def test_use_protocol():
 
     assert rnd(rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account}))) == rnd(11_8539695450) # cEth in protocol 
     assert rnd(rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account}))) == rnd(12_6570298233) # hEth in protocol
+
+    valOne, valTwo = gwin_protocol.simulateInteract.call(1300_00000000) # Test view function can estimate balances as well
+    assert rnd(rounded(valTwo)) == rnd(11_8539695450)
+    assert rnd(rounded(valOne)) == rnd(12_6570298233)
 
     # Owner 
     assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(account.address, {"from": account}))) == rnd(9_2982800995) # cEth for account 
