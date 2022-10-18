@@ -137,25 +137,30 @@ contract GwinProtocol is Ownable {
         // 100_0000000000 basis points = 100% of funds
         if (_isCooled == true && _isHeated == false) {
             // Cooled only
-            withdrawFromTranche(true, false, bps, 0);
+            withdrawFromTranche(true, false, 0, 0, true);
         } else if (_isCooled == false && _isHeated == true) {
             // Heated only
-            withdrawFromTranche(false, true, 0, bps);
+            withdrawFromTranche(false, true, 0, 0, true);
         } else if (_isCooled == true && _isHeated == true) {
             // Cooled and Heated
-            withdrawFromTranche(true, true, bps, bps);
+            withdrawFromTranche(true, true, 0, 0, true);
         }
         // ISSUE is that withdrawal amount is set before interaction!!!
     }
 
-    // CREATE withdrawalPreview()
+    // // CREATE withdrawalPreview()
+    // function withdrawalPreview() public view returns (uint, uint) {
+    //     interact();
+    //     reAdjust(true, _isCooled, _isHeated);
+    // }
 
     // Needs to be refactored for percentages
     function withdrawFromTranche(
         bool _isCooled,
         bool _isHeated,
-        uint _cPercent,
-        uint _hPercent
+        uint _cAmount,
+        uint _hAmount,
+        bool _isAll
     ) public {
         require(
             protocol_state == PROTOCOL_STATE.OPEN,
@@ -165,10 +170,12 @@ contract GwinProtocol is Ownable {
             cEthBal > 0 && hEthBal > 0,
             "The Protocol needs initial funds deposited."
         );
-        require(
-            _cPercent > 0 || _hPercent > 0,
-            "Amount must be greater than zero."
-        );
+        if (_isAll == false) {
+            require(
+                _cAmount > 0 || _hAmount > 0,
+                "Amount must be greater than zero."
+            );
+        }
         require(_isCooled == true || _isHeated == true);
 
         // Set ETH/USD prices (last settled and current)
@@ -177,34 +184,40 @@ contract GwinProtocol is Ownable {
 
         reAdjust(true, _isCooled, _isHeated);
 
-        uint cAmount = (ethStakedBalance[msg.sender].cBal * _cPercent) / bps;
-        uint hAmount = (ethStakedBalance[msg.sender].hBal * _hPercent) / bps;
+        if (_isAll == true) {
+            if (_isCooled == true) {
+                _cAmount = ethStakedBalance[msg.sender].cBal;
+            }
+            if (_isHeated == true) {
+                _hAmount = ethStakedBalance[msg.sender].hBal;
+            }
+        }
+
+        require(
+            _cAmount <= ethStakedBalance[msg.sender].cBal &&
+                _hAmount <= ethStakedBalance[msg.sender].hBal,
+            "The amount to withdrawal is greater than the available balance."
+        );
 
         // Withdraw ETH
-        if (cAmount > 0 && hAmount > 0) {
+        if (_cAmount > 0 && _hAmount > 0) {
             // Cooled and Heated
-            require(
-                cAmount <= ethStakedBalance[msg.sender].cBal &&
-                    hAmount <= ethStakedBalance[msg.sender].hBal
-            );
-            ethStakedBalance[msg.sender].cBal -= cAmount;
-            cEthBal -= cAmount;
-            ethStakedBalance[msg.sender].hBal -= hAmount;
-            hEthBal -= hAmount;
-            payable(msg.sender).transfer(cAmount + hAmount);
+            ethStakedBalance[msg.sender].cBal -= _cAmount;
+            cEthBal -= _cAmount;
+            ethStakedBalance[msg.sender].hBal -= _hAmount;
+            hEthBal -= _hAmount;
+            payable(msg.sender).transfer(_cAmount + _hAmount);
         } else {
-            if (cAmount > 0 && hAmount == 0) {
+            if (_cAmount > 0 && _hAmount == 0) {
                 // Cooled, No Heated
-                require(cAmount <= ethStakedBalance[msg.sender].cBal);
-                ethStakedBalance[msg.sender].cBal -= cAmount;
-                cEthBal -= cAmount;
-                payable(msg.sender).transfer(cAmount);
-            } else if (cAmount == 0 && hAmount > 0) {
+                ethStakedBalance[msg.sender].cBal -= _cAmount;
+                cEthBal -= _cAmount;
+                payable(msg.sender).transfer(_cAmount);
+            } else if (_cAmount == 0 && _hAmount > 0) {
                 // Heated, No Cooled
-                require(hAmount <= ethStakedBalance[msg.sender].hBal);
-                ethStakedBalance[msg.sender].hBal -= hAmount;
-                hEthBal -= hAmount;
-                payable(msg.sender).transfer(hAmount);
+                ethStakedBalance[msg.sender].hBal -= _hAmount;
+                hEthBal -= _hAmount;
+                payable(msg.sender).transfer(_hAmount);
             }
         }
 
@@ -583,5 +596,75 @@ contract GwinProtocol is Ownable {
 
     function abs(int x) private pure returns (int) {
         return x >= 0 ? x : -x;
+    }
+
+    function simulateInteract(uint _ethUsd) public view returns (uint, uint) {
+        // old method
+        // uint256 currentEthUsd = getCurrentEthUsd(); // current ETH/USD in terms of usdDecimals
+
+        uint256 currentEthUsd = _ethUsd;
+        int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
+        // find expected return and use it to calculate allocation difference for each tranche
+        (
+            int256 cooledAllocationDiff,
+            int256 cooledChange
+        ) = trancheSpecificCalcs(true, ethUsdProfit, currentEthUsd);
+        (
+            int256 heatedAllocationDiff,
+            int256 heatedChange
+        ) = trancheSpecificCalcs(false, ethUsdProfit, currentEthUsd);
+        // use allocation differences to figure the absolute allocation total
+        uint256 absAllocationTotal;
+        {
+            // scope to avoid 'stack too deep' error
+            int256 absHeatedAllocationDiff = abs(heatedAllocationDiff);
+            int256 absCooledAllocationDiff = abs(cooledAllocationDiff);
+            int256 minAbsAllocation = absCooledAllocationDiff >
+                absHeatedAllocationDiff
+                ? absHeatedAllocationDiff
+                : absCooledAllocationDiff;
+            int256 nonNaturalDifference = heatedAllocationDiff +
+                cooledAllocationDiff;
+            uint256 percentCooledTranche = ((cEthBal * bps) /
+                (cEthBal + hEthBal));
+            uint256 nonNaturalMultiplier = ethUsdProfit > 0
+                ? percentCooledTranche
+                : ((1 * bps) - percentCooledTranche);
+            uint256 adjNonNaturalDiff = (uint(abs(nonNaturalDifference)) *
+                nonNaturalMultiplier) / bps;
+            absAllocationTotal = uint(minAbsAllocation) + adjNonNaturalDiff;
+        }
+        // calculate the actual allocation for the cooled tranche
+        int256 cooledAllocation;
+        int256 heatedAllocation;
+        if (cooledAllocationDiff < 0) {
+            if ((cEthBal * currentEthUsd) - absAllocationTotal > 0) {
+                cooledAllocation = -int(absAllocationTotal);
+            } else {
+                cooledAllocation = int(cEthBal * currentEthUsd);
+            }
+        } else {
+            if ((hEthBal * currentEthUsd) - absAllocationTotal > 0) {
+                cooledAllocation = int(absAllocationTotal);
+            } else {
+                cooledAllocation = int(hEthBal * currentEthUsd);
+            }
+        }
+        // heated allocation is the inverse of the cooled allocation
+        heatedAllocation = -cooledAllocation; // USD allocation in usdDecimal terms
+        uint256 totalLockedUsd = ((cEthBal + hEthBal) * currentEthUsd) / // USD balance of protocol in usdDecimal terms
+            decimals;
+        int256 cooledBalAfterAllocation = ((int(cEthBal * lastSettledEthUsd) +
+            cooledChange) / int(decimals)) + cooledAllocation;
+        int256 heatedBalAfterAllocation = int(totalLockedUsd) - // heated USD balance in usdDecimal terms
+            cooledBalAfterAllocation;
+        uint hEthBalSim;
+        uint cEthBalSim;
+        (hEthBalSim, cEthBalSim) = reallocate( // reallocate the protocol ETH according to price movement
+            currentEthUsd,
+            cooledBalAfterAllocation,
+            heatedBalAfterAllocation
+        );
+        return (hEthBalSim, cEthBalSim);
     }
 }
