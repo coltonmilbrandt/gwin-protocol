@@ -63,13 +63,12 @@ def test_use_protocol():
     assert gwin_protocol.retrieveHEthPercentBalance.call(non_owner.address, {"from": account}) == 0 # hEth % for non_owner
 
 
-
+    ################### tx2 ###################
     # Act
     gwin_protocol.changeCurrentEthUsd(1400, {"from": account})
     # Assert
     assert gwin_protocol.retrieveCurrentEthUsd() == 1400_00000000;
     # Act
-    ################### tx2 ###################
     #              DEPOSIT              isCooled, isHeated, cAmount, hAmount {from, msg.value}
     txTwo = gwin_protocol.depositToTranche(False, True, 0, Web3.toWei(1, "ether"), {"from": non_owner_two, "value": Web3.toWei(1, "ether")})
     txTwo.wait(1)
@@ -130,7 +129,7 @@ def test_use_protocol():
     assert rounded(gwin_protocol.retrieveHEthBalance.call(non_owner_two.address, {"from": account})) == 9656799970 # hEth for account
     assert gwin_protocol.retrieveHEthPercentBalance.call(non_owner_two.address, {"from": account}) == 7_9474972592 # hEth % for account 
 
-
+    # NOTE: test_deploy_mock_protocol_in_use does a unit test up until this point
 
     # Act
     gwin_protocol.changeCurrentEthUsd(1150, {"from": account})

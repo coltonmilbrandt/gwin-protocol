@@ -9,14 +9,16 @@ from brownie import (
     MockDAI,
     Contract,
 )
-
+from web3 import Web3
+import pytest
 import math
-
+from brownie import GwinToken, GwinProtocol
 # eth_utils needs to be installed "pip3 install eth_utils"
 import eth_utils
 
 INITIAL_PRICE_FEED_VALUE = 2000_000000000000000000
 DECIMALS = 18
+KEPT_BALANCE = Web3.toWei(100, "ether")
 
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["hardhat", "development", "ganache"]
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
@@ -224,3 +226,37 @@ def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_PRICE_FEED_VALUE):
 # def transfer_tokens(token, amount):
 #     tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
 #     tx.wait(1)
+
+def deploy_mock_protocol_in_use():
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    account = get_account()
+    gwin_ERC20 = GwinToken.deploy({"from": account})
+    gwin_protocol = GwinProtocol.deploy(gwin_ERC20.address, {"from": account}, publish_source=config["networks"][network.show_active()]["verify"])
+    tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
+    tx.wait(1)
+    non_owner = get_account(index=1) # Alice
+    non_owner_two = get_account(index=2) # Bob
+    non_owner_three = get_account(index=3) # Chris
+    non_owner_four = get_account(index=4) # Dan
+    tx = gwin_protocol.initializeProtocol({"from": account, "value": Web3.toWei(20, "ether")})
+    tx.wait(1)
+
+    ################### tx1 ###################
+    gwin_protocol.changeCurrentEthUsd(1200, {"from": account})
+    #                                     isCooled, isHeated, cAmount, hAmount {from, msg.value}
+    txOne = gwin_protocol.depositToTranche(True, False, Web3.toWei(1, "ether"), 0, {"from": non_owner, "value": Web3.toWei(1, "ether")})
+    txOne.wait(1)
+
+    ################### tx2 ###################
+    gwin_protocol.changeCurrentEthUsd(1400, {"from": account})
+    #              DEPOSIT              isCooled, isHeated, cAmount, hAmount {from, msg.value}
+    txTwo = gwin_protocol.depositToTranche(False, True, 0, Web3.toWei(1, "ether"), {"from": non_owner_two, "value": Web3.toWei(1, "ether")})
+    txTwo.wait(1)
+    ################### tx3 ###################
+    gwin_protocol.changeCurrentEthUsd(1300, {"from": account})
+    #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
+    txThree = gwin_protocol.withdrawFromTranche(True, False, 0, 0, True, {"from": non_owner})
+    txThree.wait(1)
+
+    return gwin_protocol, gwin_ERC20
