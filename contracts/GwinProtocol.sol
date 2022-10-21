@@ -97,10 +97,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             protocol_state == PROTOCOL_STATE.OPEN,
             "The Protocol has not been initialized yet."
         );
-        require(
-            cEthBal > 0 && hEthBal > 0,
-            "The Protocol needs initial funds deposited."
-        );
+        // TEMP
+        // require(
+        //     cEthBal > 0 && hEthBal > 0,
+        //     "The Protocol needs initial funds deposited."
+        // );
         require(msg.value > 0, "Amount must be greater than zero.");
         require(_isCooled == true || _isHeated == true);
         require(_cAmount + _hAmount <= msg.value);
@@ -162,8 +163,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             protocol_state == PROTOCOL_STATE.OPEN,
             "The Protocol has not been initialized yet."
         );
+        // TEMP ||
         require(
-            cEthBal > 0 && hEthBal > 0,
+            cEthBal > 0 || hEthBal > 0,
             "The Protocol needs initial funds deposited."
         );
         if (_isAll == false) {
@@ -229,7 +231,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ethStakers.pop();
     }
 
-    // Adjust affected tranche percentages
+    // RE-ADJUST // - adjusts affected tranche percentages and balances
     function reAdjust(
         bool _beforeTx,
         bool _isCooled,
@@ -461,7 +463,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return false;
     }
 
-    // Get profit percent in basis points
+    // GET PROFIT // - returns profit percentage in terms of basis points
     function getProfit(uint256 _ethUsd) public view returns (int256) {
         int256 profit = ((int(_ethUsd) - int(lastSettledEthUsd)) * int(bps)) /
             int(lastSettledEthUsd);
@@ -474,16 +476,17 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return ethUsd;
     }
 
-    // calculates allocation difference for a tranche
+    // TRANCHE SPECIFIC CALCS // - calculates allocation difference for a tranche (also avoids 'stack too deep' error)
     function trancheSpecificCalcs(
         bool _isCooled,
         int256 _ethUsdProfit,
         uint256 _currentEthUsd
     ) private view returns (int256, int256) {
-        require(
-            cEthBal > 0 && hEthBal > 0, // in Wei
-            "Protocol must have funds in order to settle."
-        );
+        // TEMP
+        // require(
+        //     cEthBal > 0 || hEthBal > 0, // in Wei
+        //     "Protocol must have funds in order to settle."
+        // );
         uint256 trancheBal;
         int256 r;
         // get tranche balance and basis points for expected return
@@ -494,7 +497,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             trancheBal = hEthBal; // in Wei
             r = 50_0000000000; // basis points
         }
-        require(trancheBal > 0, "Tranche must have a balance.");
+        // TEMP
+        // require(trancheBal > 0, "Tranche must have a balance.");
         require(
             r == -50_0000000000 || r == 50_0000000000,
             "Tranche must have a valid multiplier value."
@@ -508,11 +512,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (allocationDifference, trancheChange);
     }
 
-    // change to private down the line?
+    // INTERACT // - rebalances the cooled and heated tranches
     function interact() private returns (uint, uint) {
-        // old method
-        // uint256 currentEthUsd = getCurrentEthUsd(); // current ETH/USD in terms of usdDecimals
-
         uint256 currentEthUsd = ethUsd;
         int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
         // find expected return and use it to calculate allocation difference for each tranche
@@ -577,6 +578,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (hEthBal, cEthBal);
     }
 
+    // REALLOCATE - uses the USD values to calculate ETH balances of tranches
     function reallocate(
         uint256 _currentEthUsd, // in usdDecimal form
         int256 _cUsdBal, // in usdDecimal form
@@ -589,10 +591,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (hEthBalNew, cEthBalNew);
     }
 
+    // ABS // - returns the absolute value of an int
     function abs(int x) private pure returns (int) {
         return x >= 0 ? x : -x;
     }
 
+    // SIMULATE INTERACT // - view only of simulated rebalance of the cooled and heated tranches
     function simulateInteract(uint _ethUsd) public view returns (uint, uint) {
         // old method
         // uint256 currentEthUsd = getCurrentEthUsd(); // current ETH/USD in terms of usdDecimals

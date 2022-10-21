@@ -406,18 +406,24 @@ import pytest
 #     non_owner_three = get_account(index=3) # Chris
 #     non_owner_four = get_account(index=4) # Dan
 #     gwin_protocol, gwin_ERC20 = deploy_mock_protocol_in_use()
+    
+#     valOne, valTwo = gwin_protocol.simulateInteract.call(300_00000000)
+#     assert rounded(valTwo) == 0
+#     assert rounded(valOne) == 0
+
 #     # Act
-#     gwin_protocol.changeCurrentEthUsd(400, {"from": account}) # Started at 1300
+#     gwin_protocol.changeCurrentEthUsd(300, {"from": account}) # Started at 1300
 #     # Assert
-#     assert gwin_protocol.retrieveCurrentEthUsd() == 400_00000000;
+#     assert gwin_protocol.retrieveCurrentEthUsd() == 300_00000000;
 #     #              WITHDRAWAL          isCooled, isHeated, cAmount, hAmount {from, msg.value}
-#     tx = gwin_protocol.withdrawFromTranche(False, True, 0, 1, False, {"from": account})
+#     # tx = gwin_protocol.withdrawFromTranche(True, False, 0, 0, True, {"from": account})
+#     tx = gwin_protocol.depositToTranche(False, True, 0, Web3.toWei(1, "ether"), {"from": non_owner, "value": Web3.toWei(1, "ether")})
 #     tx.wait(1)
 #     # Assert
-#     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 20_9965772305 # cEth in protocol
+#     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 19_9965772305 # cEth in protocol
 #     assert rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account})) == 0 # hEth in protocol
 
-#     valOne, valTwo = gwin_protocol.simulateInteract.call(400_00000000)
+#     valOne, valTwo = gwin_protocol.simulateInteract.call(300_00000000)
 #     assert rounded(valTwo) == 2_4959572741
 #     assert rounded(valOne) == 10_5352633861
 
