@@ -27,8 +27,6 @@ def test_use_protocol():
     assert gwin_protocol.retrieveHEthBalance.call(account.address, {"from": account}) == 10_000000000000000000 # hEth for account
     assert gwin_protocol.retrieveHEthPercentBalance.call(account.address, {"from": account}) == 100_0000000000 # hEth % for account 
 
-    
-
     valOne, valTwo = gwin_protocol.simulateInteract.call(1000_00000000)
     assert valOne == 10_000000000000000000
     assert valTwo == 10_000000000000000000
@@ -526,7 +524,3 @@ def test_use_protocol():
     assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(non_owner_four.address, {"from": account}))) == rnd(4589756574) # hEth for account
     assert rnd(roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(non_owner_four.address, {"from": account}))) == rnd(roundedDec(3_6262508961)) # hEth % for account
 
-
-
-    #I3 Deposit to both Tranches
-    #I4 Withdrawal from both Tranches
