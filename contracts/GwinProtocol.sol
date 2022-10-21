@@ -550,16 +550,25 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         int256 cooledAllocation;
         int256 heatedAllocation;
         if (cooledAllocationDiff < 0) {
-            if ((cEthBal * currentEthUsd) - absAllocationTotal > 0) {
+            if (
+                // the cEthBal USD value - absAllocation (in usdDecimals)
+                int((cEthBal * currentEthUsd) / decimals) -
+                    int(absAllocationTotal) >
+                0
+            ) {
                 cooledAllocation = -int(absAllocationTotal);
             } else {
-                cooledAllocation = int(cEthBal * currentEthUsd);
+                cooledAllocation = int((cEthBal * currentEthUsd) / decimals); // the cEthBal USD value (in UsDecimals * Decimals)
             }
         } else {
-            if ((hEthBal * currentEthUsd) - absAllocationTotal > 0) {
-                cooledAllocation = int(absAllocationTotal);
+            if (
+                int((hEthBal * currentEthUsd) / decimals) -
+                    int(absAllocationTotal) >
+                0
+            ) {
+                cooledAllocation = int(absAllocationTotal); // absolute allocation in UsDecimals
             } else {
-                cooledAllocation = int(hEthBal * currentEthUsd);
+                cooledAllocation = int((hEthBal * currentEthUsd) / decimals);
             }
         }
         // heated allocation is the inverse of the cooled allocation
@@ -608,10 +617,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             int256 cooledAllocationDiff,
             int256 cooledChange
         ) = trancheSpecificCalcs(true, ethUsdProfit, currentEthUsd);
+        // return cooledAllocationDiff;
         (
             int256 heatedAllocationDiff,
             int256 heatedChange
         ) = trancheSpecificCalcs(false, ethUsdProfit, currentEthUsd);
+        // return heatedAllocationDiff;
         // use allocation differences to figure the absolute allocation total
         uint256 absAllocationTotal;
         {
@@ -637,16 +648,25 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         int256 cooledAllocation;
         int256 heatedAllocation;
         if (cooledAllocationDiff < 0) {
-            if ((cEthBal * currentEthUsd) - absAllocationTotal > 0) {
+            if (
+                // the cEthBal USD value - absAllocation (in usdDecimals)
+                int((cEthBal * currentEthUsd) / decimals) -
+                    int(absAllocationTotal) >
+                0
+            ) {
                 cooledAllocation = -int(absAllocationTotal);
             } else {
-                cooledAllocation = int(cEthBal * currentEthUsd);
+                cooledAllocation = int((cEthBal * currentEthUsd) / decimals); // the cEthBal USD value (in UsDecimals * Decimals)
             }
         } else {
-            if ((hEthBal * currentEthUsd) - absAllocationTotal > 0) {
-                cooledAllocation = int(absAllocationTotal);
+            if (
+                int((hEthBal * currentEthUsd) / decimals) -
+                    int(absAllocationTotal) >
+                0
+            ) {
+                cooledAllocation = int(absAllocationTotal); // absolute allocation in UsDecimals
             } else {
-                cooledAllocation = int(hEthBal * currentEthUsd);
+                cooledAllocation = int((hEthBal * currentEthUsd) / decimals);
             }
         }
         // heated allocation is the inverse of the cooled allocation
