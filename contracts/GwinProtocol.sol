@@ -237,19 +237,18 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         bool _isCooled,
         bool _isHeated
     ) private {
-        // select the affected tranche
-        // loop through stakers[] to get addresses (have ethStakers[] and ethStakers[]?)
-        //      use addresses as key to Bal mappings
         //      use new ETH balance to determine percent ownership (can a value be used instead of writing?)
         if (_beforeTx == true) {
             // BEFORE deposit, only balances are affected based on percentages
+            liquidateIfZero();
+            // ISSUE stakers need removed if they get liquidated (as of now, only one is removed)
+            // ISSUE this could likely be optimized to avoid performing the for loops twice when liquidated
             for (
                 uint256 ethStakersIndex = 0;
                 ethStakersIndex < ethStakers.length;
                 ethStakersIndex++
             ) {
                 address addrC = ethStakers[ethStakersIndex];
-                // ISSUE because if basis points are used for percentages, then precision will be an issue (#1)
                 ethStakedBalance[addrC].cBal =
                     (cEthBal * ethStakedBalance[addrC].cPercent) /
                     bps;
@@ -259,7 +258,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             }
         } else {
             // AFTER tx, only affected tranche percentages change
-            // ISSUE allow both percentage numbers to be updated for deposit (withdrawal done)
             uint indexToRemove; // to track index of user in ethStakers array if account emptied
             bool indexNeedsRemoved; // to differentiate indexToRemove == 0 from default ethStakers[0]
             if (_isCooled == true && _isHeated == false) {
@@ -270,7 +268,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     ethStakersIndex++
                 ) {
                     address addrC = ethStakers[ethStakersIndex];
-                    // ISSUE because if basis points are used for percentages, then precision will be an issue
                     ethStakedBalance[addrC].cPercent =
                         (ethStakedBalance[addrC].cBal * bps) /
                         cEthBal;
@@ -291,7 +288,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     ethStakersIndex++
                 ) {
                     address addrC = ethStakers[ethStakersIndex];
-                    // ISSUE because if basis points are used for percentages, then precision will be an issue
                     ethStakedBalance[addrC].hPercent =
                         (ethStakedBalance[addrC].hBal * bps) /
                         hEthBal;
@@ -312,7 +308,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     ethStakersIndex++
                 ) {
                     address addrC = ethStakers[ethStakersIndex];
-                    // ISSUE because if basis points are used for percentages, then precision will be an issue
                     ethStakedBalance[addrC].cPercent =
                         (ethStakedBalance[addrC].cBal * bps) /
                         cEthBal;
@@ -336,12 +331,31 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
     }
 
+    function liquidateIfZero() private {
+        for (
+            uint256 ethStakersIndex = 0;
+            ethStakersIndex < ethStakers.length;
+            ethStakersIndex++
+        ) {
+            address addrC = ethStakers[ethStakersIndex];
+            if (cEthBal == 0) {
+                // if tranche is liquidated, reset user to zero
+                ethStakedBalance[addrC].cPercent = 0;
+                ethStakedBalance[addrC].cBal = 0;
+            }
+            if (hEthBal == 0) {
+                // if tranche is liquidated, reset all to zero
+                ethStakedBalance[addrC].hBal = 0;
+                ethStakedBalance[addrC].hPercent = 0;
+            }
+        }
+    }
+
     // TEMP change ETH/USD
     function changeCurrentEthUsd(uint _price) public {
         ethUsd = _price * usdDecimals;
     }
 
-    // ISSUE #I5 needs refactored for addresses rather than index because index changes
     function retrieveCurrentEthUsd() public view returns (uint) {
         return ethUsd;
     }
@@ -372,6 +386,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
     function retrieveHEthBalance(address _user) public view returns (uint) {
         return ethStakedBalance[_user].hBal;
+    }
+
+    function retrieveAddressAtIndex(uint _index) public view returns (address) {
+        return ethStakers[_index];
     }
 
     function retrieveProtocolCEthBalance() public view returns (uint) {

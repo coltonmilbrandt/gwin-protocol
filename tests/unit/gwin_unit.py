@@ -127,10 +127,10 @@ def test_deploy_mock_protocol_in_use():
     assert gwin_protocol.retrieveHEthBalance.call(non_owner.address, {"from": account}) == 0 # hEth for non_owner
     assert gwin_protocol.retrieveHEthPercentBalance.call(non_owner.address, {"from": account}) == 0 # hEth % for non_owner
 
-    assert rounded(gwin_protocol.retrieveCEthBalance.call(non_owner_two.address, {"from": account})) == 0 # cEth for account 
-    assert gwin_protocol.retrieveCEthPercentBalance.call(non_owner_two.address, {"from": account}) == 0 # cEth % for account
-    assert rounded(gwin_protocol.retrieveHEthBalance.call(non_owner_two.address, {"from": account})) == 9656799970 # hEth for account
-    assert gwin_protocol.retrieveHEthPercentBalance.call(non_owner_two.address, {"from": account}) == 7_9474972592 # hEth % for account 
+    assert rounded(gwin_protocol.retrieveCEthBalance.call(non_owner_two.address, {"from": account})) == 0 # cEth for non_owner_two 
+    assert gwin_protocol.retrieveCEthPercentBalance.call(non_owner_two.address, {"from": account}) == 0 # cEth % for non_owner_two
+    assert rounded(gwin_protocol.retrieveHEthBalance.call(non_owner_two.address, {"from": account})) == 9656799970 # hEth for non_owner_two
+    assert gwin_protocol.retrieveHEthPercentBalance.call(non_owner_two.address, {"from": account}) == 7_9474972592 # hEth % for non_owner_two 
 
 def test_withdrawal_greater_than_user_balance():
     # Arrange
@@ -434,7 +434,6 @@ def test_deposit_after_liquidation():
     gwin_protocol.changeCurrentEthUsd(300, {"from": account}) # Started at 1300
     # Assert
     assert gwin_protocol.retrieveCurrentEthUsd() == 300_00000000;
-    #              WITHDRAWAL          isCooled, isHeated, cAmount, hAmount {from, msg.value}
     # tx = gwin_protocol.withdrawFromTranche(True, False, 0, 0, True, {"from": account})
     tx = gwin_protocol.depositToTranche(False, True, 0, Web3.toWei(1, "ether"), {"from": non_owner, "value": Web3.toWei(1, "ether")})
     tx.wait(1)
@@ -456,6 +455,55 @@ def test_deposit_after_liquidation():
     assert rounded(gwin_protocol.retrieveHEthBalance.call(non_owner.address, {"from": account})) == 1_0000000000 # hEth for non_owner
     assert gwin_protocol.retrieveHEthPercentBalance.call(non_owner.address, {"from": account}) == 100_0000000000 # hEth % for non_owner
 
+    assert rounded(gwin_protocol.retrieveCEthBalance.call(non_owner_two.address, {"from": account})) == 0 # cEth for non_owner_two 
+    assert gwin_protocol.retrieveCEthPercentBalance.call(non_owner_two.address, {"from": account}) == 0 # cEth % for non_owner_two
+    assert rounded(gwin_protocol.retrieveHEthBalance.call(non_owner_two.address, {"from": account})) == 0 # hEth for non_owner_two
+    assert gwin_protocol.retrieveHEthPercentBalance.call(non_owner_two.address, {"from": account}) == 0 # hEth % for non_owner_two
+
+def test_withdrawal_after_liquidation():
+    # Arrange
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    account = get_account() # Protocol 
+    non_owner = get_account(index=1) # Alice
+    non_owner_two = get_account(index=2) # Bob
+    non_owner_three = get_account(index=3) # Chris
+    non_owner_four = get_account(index=4) # Dan
+    gwin_protocol, gwin_ERC20 = deploy_mock_protocol_in_use()
+    
+    valOne, valTwo = gwin_protocol.simulateInteract.call(300_00000000)
+    # test_value = gwin_protocol.simulateInteract.call(300_00000000)
+    # assert test_value == 0
+    assert rounded(valTwo) == 210312206602
+    assert rounded(valOne) == 0
+
+    # Act
+    gwin_protocol.changeCurrentEthUsd(300, {"from": account}) # Started at 1300
+    # Assert
+    assert gwin_protocol.retrieveCurrentEthUsd() == 300_00000000;
+    #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
+    tx = gwin_protocol.withdrawFromTranche(True, False, Web3.toWei(10, "ether"), 0, False, {"from": account})
+    tx.wait(1)
+    # Assert
+    assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call({"from": account})) == 11_0312206602 # cEth in protocol
+    assert rounded(gwin_protocol.retrieveProtocolHEthBalance.call({"from": account})) == 0 # hEth in protocol
+
+    valOne, valTwo = gwin_protocol.simulateInteract.call(300_00000000)
+    assert rounded(valTwo) == 11_0312206602 # cEth according to simulate interact call
+    assert rounded(valOne) == 0 # hEth according to simulate interact call
+
+    assert rounded(gwin_protocol.retrieveCEthBalance.call(account.address, {"from": account})) == 11_0312206602 # cEth for account 
+    assert rnd(roundedDec(gwin_protocol.retrieveCEthPercentBalance.call(account.address, {"from": account}))) == rnd(100_0000000000) # cEth % for account
+    assert rounded(gwin_protocol.retrieveHEthBalance.call(account.address, {"from": account})) == 0 # hEth for account
+    assert gwin_protocol.retrieveHEthPercentBalance.call(account.address, {"from": account}) == 0 # hEth % for account 
+
+    assert gwin_protocol.retrieveAddressAtIndex.call(0, {"from": account}) == account.address
+
+    assert rounded(gwin_protocol.retrieveCEthBalance.call(non_owner.address, {"from": account})) == 0 # cEth for non_owner
+    assert gwin_protocol.retrieveCEthPercentBalance.call(non_owner.address, {"from": account}) == 0 # cEth % non_owner
+    assert gwin_protocol.retrieveHEthPercentBalance.call(non_owner.address, {"from": account}) == 0 # hEth % for non_owner
+    assert rounded(gwin_protocol.retrieveHEthBalance.call(non_owner.address, {"from": account})) == 0 # hEth for non_owner
+    
     assert rounded(gwin_protocol.retrieveCEthBalance.call(non_owner_two.address, {"from": account})) == 0 # cEth for non_owner_two 
     assert gwin_protocol.retrieveCEthPercentBalance.call(non_owner_two.address, {"from": account}) == 0 # cEth % for non_owner_two
     assert rounded(gwin_protocol.retrieveHEthBalance.call(non_owner_two.address, {"from": account})) == 0 # hEth for non_owner_two
