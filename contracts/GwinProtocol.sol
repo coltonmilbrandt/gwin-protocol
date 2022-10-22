@@ -614,7 +614,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (hEthBalNew, cEthBalNew);
     }
 
-    /// ABS /// - returns the absolute value of an int
+    /// ABSOLUTE-VALUE /// - returns the absolute value of an int
     function abs(int x) private pure returns (int) {
         return x >= 0 ? x : -x;
     }
