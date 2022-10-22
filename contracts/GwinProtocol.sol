@@ -14,16 +14,15 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint hPercent;
     }
 
-    //    isCooled -> depositor address -> amount
-    // mapping(bool => mapping(address => Bal)) public ethBalance;
+    // user address -> user balances struct
     mapping(address => Bal) public ethStakedBalance;
     // token address -> staker address -> amount
     mapping(address => mapping(address => uint256)) public stakingBalance;
     // staker address -> unique tokens staked
     mapping(address => uint256) public uniquePositions;
-    // // token address -> token price feed address
-    // mapping(address => address) public tokenPriceFeedMapping;
+    // address -> isUnique
     mapping(address => bool) public isUniqueEthStaker;
+    // array of ETH stakers
     address[] public ethStakers;
     // array of stakers
     address[] public stakers;
@@ -35,6 +34,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         CLOSED, //2
         CALCULATING //3
     }
+
     PROTOCOL_STATE public protocol_state;
 
     // ********* Decimal Values *********
@@ -42,13 +42,15 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     uint256 usdDecimals = 10**8;
     uint256 bps = 10**12;
 
-    // *********  Test Values   *********
+    // ************* Values *************
     uint256 lastSettledEthUsd;
     uint256 ethUsd;
     uint256 hEthBal;
     uint256 cEthBal;
-    uint256 pEthBal;
     // Potential ISSUE if these can be changed, but I doubt that's the case
+
+    // *********  Test Values   *********
+    uint256 pEthBal;
 
     // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor
     IERC20 public gwinToken;
@@ -60,6 +62,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         protocol_state = PROTOCOL_STATE.CLOSED;
     }
 
+    /// INITIALIZE-PROTOCOL /// - this deposits an equal amount to each tranche to initialize the protocol
     function initializeProtocol() external payable {
         require(
             protocol_state == PROTOCOL_STATE.CLOSED,
@@ -87,6 +90,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         // end TEMP
     }
 
+    /// DEPOSIT /// - used to deposit to cooled or heated tranche, or both
     function depositToTranche(
         bool _isCooled,
         bool _isHeated,
@@ -97,19 +101,13 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             protocol_state == PROTOCOL_STATE.OPEN,
             "The Protocol has not been initialized yet."
         );
-        // TEMP
-        // require(
-        //     cEthBal > 0 && hEthBal > 0,
-        //     "The Protocol needs initial funds deposited."
-        // );
         require(msg.value > 0, "Amount must be greater than zero.");
         require(_isCooled == true || _isHeated == true);
         require(_cAmount + _hAmount <= msg.value);
 
-        // Set ETH/USD prices (last settled and current)
         // Interact to rebalance Tranches with new USD price
         interact();
-        // ISSUE balances are off until reAdjusted, percents are right
+        // Re-adjust to update balances after price change
         reAdjust(true, _isCooled, _isHeated);
         // Deposit ETH
         if (_isCooled == true && _isHeated == false) {
@@ -127,18 +125,14 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         if (isUniqueEthStaker[msg.sender] == false) {
             ethStakers.push(msg.sender);
         }
-        // Re-Adjust user percentages for affected Tranche
+        // Re-Adjust user percentages
         reAdjust(false, _isCooled, _isHeated);
 
-        // TEMP until price feed is implements
+        // TEMP until price feed is implemented
         lastSettledEthUsd = ethUsd;
     }
 
-    // // CREATE withdrawalPreview()
-    // function withdrawalPreview() public view returns (uint, uint) {
-    //     (userHeatedBalance, userCooledBalance) = previewUserBalance();
-    // }
-
+    /// PREVIEW-USER-BALANCE /// - preview balance at the current ETH/USD price
     function previewUserBalance() public view returns (uint, uint) {
         uint heatedBalance;
         uint cooledBalance;
@@ -152,6 +146,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (userHeatedBalance, userCooledBalance);
     }
 
+    /// WITHDRAW /// - used to withdraw from cooled or heated tranche, or both
     function withdrawFromTranche(
         bool _isCooled,
         bool _isHeated,
@@ -176,10 +171,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
         require(_isCooled == true || _isHeated == true);
 
-        // Set ETH/USD prices (last settled and current)
         // Interact to rebalance Tranches with new USD price
         interact();
-
+        // Re-adjust the user balances based on price change
         reAdjust(true, _isCooled, _isHeated);
 
         if (_isAll == true) {
@@ -219,25 +213,25 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             }
         }
 
-        // Re-Adjust user percentages for affected Tranche
+        // Re-Adjust user percentages
         reAdjust(false, _isCooled, _isHeated);
 
         // TEMP until price feed is implemented
         lastSettledEthUsd = ethUsd;
     }
 
+    /// REMOVE-FROM-ARRAY /// - removes the staker from the array of ETH stakers
     function removeFromArray(uint index) private {
         ethStakers[index] = ethStakers[ethStakers.length - 1];
         ethStakers.pop();
     }
 
-    // RE-ADJUST // - adjusts affected tranche percentages and balances
+    // RE-ADJUST /// - adjusts affected tranche percentages and balances
     function reAdjust(
         bool _beforeTx,
         bool _isCooled,
         bool _isHeated
     ) private {
-        //      use new ETH balance to determine percent ownership (can a value be used instead of writing?)
         if (_beforeTx == true) {
             // BEFORE deposit, only balances are affected based on percentages
             liquidateIfZero();
@@ -331,6 +325,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
     }
 
+    /// LIQUIDATE-IF-ZERO /// - liquidates every user in a zero balance tranche
     function liquidateIfZero() private {
         for (
             uint256 ethStakersIndex = 0;
@@ -355,6 +350,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     function changeCurrentEthUsd(uint _price) public {
         ethUsd = _price * usdDecimals;
     }
+
+    /// VIEW-BALANCE-FUNCTIONS /// - check balances
 
     function retrieveCurrentEthUsd() public view returns (uint) {
         return ethUsd;
@@ -425,6 +422,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (hEthVal, cEthVal, pEthBal);
     }
 
+    /// STAKE-TOKENS /// - for future use with ERC-20s
     function stakeTokens(uint256 _amount, address _token) public {
         // Make sure that the amount to stake is more than 0
         require(_amount > 0, "Amount must be more than 0");
@@ -448,7 +446,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
     }
 
-    // updates the mapping of user to tokens staked, could be called INCREMENT
+    /// UPDATE-UNIQUE-POSITIONS /// - updates the mapping of user to tokens staked
     function updateUniquePositions(address _user, address _token) internal {
         // NOTES: I feel like it should be '>=' below instead
 
@@ -459,13 +457,13 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
     }
 
-    // add a token address to allowed tokens for staking, only owner can call
+    /// STAKE-TOKENS /// - add a token address to allowed tokens for staking, only owner can call
     function addAllowedTokens(address _token) public onlyOwner {
         // add token address to allowedTokens[] array
         allowedTokens.push(_token);
     }
 
-    // returns whether token is allowed
+    /// TOKEN-IS-ALLOWED /// - returns whether token is allowed
     function tokenIsAllowed(address _token) public view returns (bool) {
         // Loops through the array of allowedTokens[] for length of array
         for (
@@ -481,20 +479,20 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return false;
     }
 
-    // GET PROFIT // - returns profit percentage in terms of basis points
+    /// GET PROFIT /// - returns profit percentage in terms of basis points
     function getProfit(uint256 _ethUsd) public view returns (int256) {
         int256 profit = ((int(_ethUsd) - int(lastSettledEthUsd)) * int(bps)) /
             int(lastSettledEthUsd);
         return profit;
     }
 
-    // TEMP returns current ETH/USD change to view later
+    /// TEMP returns current ETH/USD change to view later
     function getCurrentEthUsd() public returns (uint256) {
         ethUsd = 1200 * usdDecimals;
         return ethUsd;
     }
 
-    // TRANCHE SPECIFIC CALCS // - calculates allocation difference for a tranche (also avoids 'stack too deep' error)
+    /// TRANCHE SPECIFIC CALCS /// - calculates allocation difference for a tranche (also avoids 'stack too deep' error)
     function trancheSpecificCalcs(
         bool _isCooled,
         int256 _ethUsdProfit,
@@ -530,7 +528,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (allocationDifference, trancheChange);
     }
 
-    // INTERACT // - rebalances the cooled and heated tranches
+    /// INTERACT /// - rebalances the cooled and heated tranches
     function interact() private returns (uint, uint) {
         uint256 currentEthUsd = ethUsd;
         int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
@@ -605,7 +603,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (hEthBal, cEthBal);
     }
 
-    // REALLOCATE - uses the USD values to calculate ETH balances of tranches
+    /// REALLOCATE /// - uses the USD values to calculate ETH balances of tranches
     function reallocate(
         uint256 _currentEthUsd, // in usdDecimal form
         int256 _cUsdBal, // in usdDecimal form
@@ -613,21 +611,16 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     ) private view returns (uint, uint) {
         uint cEthBalNew = (uint(_cUsdBal) * decimals) / _currentEthUsd; // new cEth Balance in Wei
         uint hEthBalNew = (uint(_hUsdBal) * decimals) / _currentEthUsd; // new hEth Balance in Wei
-        // old method
-        // uint hEthBalNew = pEthBal - cEthBalNew; // new hEth Balance in Wei (inverse of cEth Balance)
         return (hEthBalNew, cEthBalNew);
     }
 
-    // ABS // - returns the absolute value of an int
+    /// ABS /// - returns the absolute value of an int
     function abs(int x) private pure returns (int) {
         return x >= 0 ? x : -x;
     }
 
-    // SIMULATE INTERACT // - view only of simulated rebalance of the cooled and heated tranches
+    /// SIMULATE INTERACT /// - view only of simulated rebalance of the cooled and heated tranches
     function simulateInteract(uint _ethUsd) public view returns (uint, uint) {
-        // old method
-        // uint256 currentEthUsd = getCurrentEthUsd(); // current ETH/USD in terms of usdDecimals
-
         uint256 currentEthUsd = _ethUsd;
         int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
         // find expected return and use it to calculate allocation difference for each tranche
