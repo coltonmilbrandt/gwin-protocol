@@ -51,8 +51,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     uint256 cEthBal;
     // Potential ISSUE if these can be changed, but I doubt that's the case
 
-    // *********  Test Values   *********
-    uint256 pEthBal;
+    // // *********  Test Values   *********
+    // uint256 pEthBal;
 
     // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor
     IERC20 public gwinToken;
@@ -89,7 +89,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ethStakedBalance[msg.sender].hBal += splitAmount;
         ethStakedBalance[msg.sender].hPercent = bps;
         hEthBal = splitAmount;
-        pEthBal = cEthBal + hEthBal;
         protocol_state = PROTOCOL_STATE.OPEN;
         // TEMP replace
         ethUsd = retrieveCurrentEthUsd();
