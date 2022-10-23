@@ -16,8 +16,9 @@ from brownie import GwinToken, GwinProtocol
 # eth_utils needs to be installed "pip3 install eth_utils"
 import eth_utils
 
-INITIAL_PRICE_FEED_VALUE = 2000_000000000000000000
+INITIAL_PRICE_FEED_VALUE = 1000_00000000
 DECIMALS = 18
+# TEMP??
 KEPT_BALANCE = Web3.toWei(100, "ether")
 
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["hardhat", "development", "ganache"]
@@ -29,9 +30,10 @@ LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
 
 contract_to_mock = {
     "eth_usd_price_feed": MockV3Aggregator,
-    "dai_usd_price_feed": MockV3Aggregator,
+    # "dai_usd_price_feed": MockV3Aggregator,
     "fau_token": MockDAI,
     "weth_token": MockWETH,
+    "link_token": LinkToken
 }
 
 def get_account(index=None, id=None):
@@ -232,7 +234,15 @@ def deploy_mock_protocol_in_use():
         pytest.skip("Only for local testing!")
     account = get_account()
     gwin_ERC20 = GwinToken.deploy({"from": account})
-    gwin_protocol = GwinProtocol.deploy(gwin_ERC20.address, {"from": account}, publish_source=config["networks"][network.show_active()]["verify"])
+    gwin_protocol = GwinProtocol.deploy(
+        gwin_ERC20.address, 
+        get_contract("eth_usd_price_feed").address, 
+        get_contract("link_token").address, 
+        {"from": account}, 
+        publish_source=config["networks"][network.show_active()]["verify"]
+    )
+    eth_usd_price_feed = get_contract("eth_usd_price_feed")
+    eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account})
     tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
     tx.wait(1)
     non_owner = get_account(index=1) # Alice
@@ -243,20 +253,20 @@ def deploy_mock_protocol_in_use():
     tx.wait(1)
 
     ################### tx1 ###################
-    gwin_protocol.changeCurrentEthUsd(1200, {"from": account})
+    eth_usd_price_feed.updateAnswer(1200_00000000, {"from": account})
     #                                     isCooled, isHeated, cAmount, hAmount {from, msg.value}
     txOne = gwin_protocol.depositToTranche(True, False, Web3.toWei(1, "ether"), 0, {"from": non_owner, "value": Web3.toWei(1, "ether")})
     txOne.wait(1)
 
     ################### tx2 ###################
-    gwin_protocol.changeCurrentEthUsd(1400, {"from": account})
+    eth_usd_price_feed.updateAnswer(1400_00000000, {"from": account})
     #              DEPOSIT              isCooled, isHeated, cAmount, hAmount {from, msg.value}
     txTwo = gwin_protocol.depositToTranche(False, True, 0, Web3.toWei(1, "ether"), {"from": non_owner_two, "value": Web3.toWei(1, "ether")})
     txTwo.wait(1)
     ################### tx3 ###################
-    gwin_protocol.changeCurrentEthUsd(1300, {"from": account})
+    eth_usd_price_feed.updateAnswer(1300_00000000, {"from": account})
     #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
     txThree = gwin_protocol.withdrawFromTranche(True, False, 0, 0, True, {"from": non_owner})
     txThree.wait(1)
 
-    return gwin_protocol, gwin_ERC20
+    return gwin_protocol, gwin_ERC20, eth_usd_price_feed

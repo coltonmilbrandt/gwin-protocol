@@ -29,6 +29,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     // array of the allowed tokens
     address[] public allowedTokens;
 
+    AggregatorV3Interface internal ethUsdPriceFeed;
+
     enum PROTOCOL_STATE {
         OPEN, //1
         CLOSED, //2
@@ -56,10 +58,15 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     IERC20 public gwinToken;
 
     // Right when we deploy this contract, we need to know the address of GWIN token
-    constructor(address _gwinTokenAddress) public {
+    constructor(
+        address _gwinTokenAddress,
+        address _priceFeedAddress,
+        address _link
+    ) public {
         // pass in the address from the GwinToken.sol contract
         gwinToken = IERC20(_gwinTokenAddress);
         protocol_state = PROTOCOL_STATE.CLOSED;
+        ethUsdPriceFeed = AggregatorV3Interface(_priceFeedAddress);
     }
 
     /// INITIALIZE-PROTOCOL /// - this deposits an equal amount to each tranche to initialize the protocol
@@ -84,9 +91,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         hEthBal = splitAmount;
         pEthBal = cEthBal + hEthBal;
         protocol_state = PROTOCOL_STATE.OPEN;
-        // TEMP replace with getCurrentEthUsd() and price feed
-        lastSettledEthUsd = 1000 * usdDecimals;
-        ethUsd = 1000 * usdDecimals;
+        // TEMP replace
+        ethUsd = retrieveCurrentEthUsd();
+        lastSettledEthUsd = ethUsd;
         // end TEMP
     }
 
@@ -128,23 +135,23 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         // Re-Adjust user percentages
         reAdjust(false, _isCooled, _isHeated);
 
-        // TEMP until price feed is implemented
+        // TEMP until price feed is implemented, don't want to get price again, rather use price from interact()
         lastSettledEthUsd = ethUsd;
     }
 
-    /// PREVIEW-USER-BALANCE /// - preview balance at the current ETH/USD price
-    function previewUserBalance() public view returns (uint, uint) {
-        uint heatedBalance;
-        uint cooledBalance;
-        (heatedBalance, cooledBalance) = simulateInteract(
-            retrieveCurrentEthUsd()
-        );
-        uint userHeatedBalance = (heatedBalance *
-            ethStakedBalance[msg.sender].hPercent) / bps;
-        uint userCooledBalance = (cooledBalance *
-            ethStakedBalance[msg.sender].cPercent) / bps;
-        return (userHeatedBalance, userCooledBalance);
-    }
+    // /// PREVIEW-USER-BALANCE /// - preview balance at the current ETH/USD price
+    // function previewUserBalance() public view returns (uint, uint) {
+    //     uint heatedBalance;
+    //     uint cooledBalance;
+    //     (heatedBalance, cooledBalance) = simulateInteract(
+    //         retrieveCurrentEthUsd()
+    //     );
+    //     uint userHeatedBalance = (heatedBalance *
+    //         ethStakedBalance[msg.sender].hPercent) / bps;
+    //     uint userCooledBalance = (cooledBalance *
+    //         ethStakedBalance[msg.sender].cPercent) / bps;
+    //     return (userHeatedBalance, userCooledBalance);
+    // }
 
     /// WITHDRAW /// - used to withdraw from cooled or heated tranche, or both
     function withdrawFromTranche(
@@ -216,7 +223,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         // Re-Adjust user percentages
         reAdjust(false, _isCooled, _isHeated);
 
-        // TEMP until price feed is implemented
+        // TEMP until price feed is implemented, don't want to get price again, rather use price from interact()
         lastSettledEthUsd = ethUsd;
     }
 
@@ -346,15 +353,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
     }
 
-    // TEMP change ETH/USD
-    function changeCurrentEthUsd(uint _price) public {
-        ethUsd = _price * usdDecimals;
-    }
-
     /// VIEW-BALANCE-FUNCTIONS /// - check balances
 
     function retrieveCurrentEthUsd() public view returns (uint) {
-        return ethUsd;
+        (, int256 price, , , ) = ethUsdPriceFeed.latestRoundData();
+        return uint(price);
     }
 
     function retrieveEthInContract() public view returns (uint) {
@@ -397,30 +400,34 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return hEthBal;
     }
 
-    // ****** TEMPORARY TESTING ******
-    function test(
-        uint _startPrice,
-        uint _endPrice,
-        uint _hEthAll,
-        uint _cEthAll
-    )
-        public
-        returns (
-            uint,
-            uint,
-            uint
-        )
-    {
-        hEthBal = _hEthAll * decimals;
-        cEthBal = _cEthAll * decimals;
-        pEthBal = (_hEthAll + _cEthAll) * decimals;
-        lastSettledEthUsd = _startPrice * usdDecimals;
-        ethUsd = _endPrice * usdDecimals;
-        uint hEthVal;
-        uint cEthVal;
-        (hEthVal, cEthVal) = interact();
-        return (hEthVal, cEthVal, pEthBal);
+    function retrieveProtocolEthPrice() public view returns (uint, uint) {
+        return (ethUsd, lastSettledEthUsd);
     }
+
+    // // ****** TEMPORARY TESTING ******
+    // function test(
+    //     uint _startPrice,
+    //     uint _endPrice,
+    //     uint _hEthAll,
+    //     uint _cEthAll
+    // )
+    //     public
+    //     returns (
+    //         uint,
+    //         uint,
+    //         uint
+    //     )
+    // {
+    //     hEthBal = _hEthAll * decimals;
+    //     cEthBal = _cEthAll * decimals;
+    //     pEthBal = (_hEthAll + _cEthAll) * decimals;
+    //     lastSettledEthUsd = _startPrice * usdDecimals;
+    //     ethUsd = _endPrice * usdDecimals;
+    //     uint hEthVal;
+    //     uint cEthVal;
+    //     (hEthVal, cEthVal) = interact();
+    //     return (hEthVal, cEthVal, pEthBal);
+    // }
 
     /// STAKE-TOKENS /// - for future use with ERC-20s
     function stakeTokens(uint256 _amount, address _token) public {
@@ -486,12 +493,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return profit;
     }
 
-    /// TEMP returns current ETH/USD change to view later
-    function getCurrentEthUsd() public returns (uint256) {
-        ethUsd = 1200 * usdDecimals;
-        return ethUsd;
-    }
-
     /// TRANCHE SPECIFIC CALCS /// - calculates allocation difference for a tranche (also avoids 'stack too deep' error)
     function trancheSpecificCalcs(
         bool _isCooled,
@@ -530,7 +531,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
     /// INTERACT /// - rebalances the cooled and heated tranches
     function interact() private returns (uint, uint) {
-        uint256 currentEthUsd = ethUsd;
+        uint256 currentEthUsd = retrieveCurrentEthUsd();
+        ethUsd = currentEthUsd;
         int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
         // find expected return and use it to calculate allocation difference for each tranche
         (
