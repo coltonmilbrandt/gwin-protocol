@@ -2,24 +2,17 @@ from brownie import (
     network,
     accounts,
     config,
-    interface,
     LinkToken,
     MockV3Aggregator,
-    MockWETH,
-    MockDAI,
+    MockOracle,
+    GwinProtocol,
+    GwinToken,
     Contract,
+    web3,
 )
-from web3 import Web3
-import pytest
+import time
 import math
-from brownie import GwinToken, GwinProtocol
-# eth_utils needs to be installed "pip3 install eth_utils"
-import eth_utils
-
-INITIAL_PRICE_FEED_VALUE = 1000_00000000
-DECIMALS = 18
-# TEMP??
-KEPT_BALANCE = Web3.toWei(100, "ether")
+import pytest
 
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["hardhat", "development", "ganache"]
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
@@ -28,23 +21,202 @@ LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
     "matic-fork",
 ]
 
+# Etherscan usually takes a few blocks to register the contract has been deployed
+BLOCK_CONFIRMATIONS_FOR_VERIFICATION = (
+    1 if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS else 6
+)
+
 contract_to_mock = {
+    "link_token": LinkToken,
     "eth_usd_price_feed": MockV3Aggregator,
-    # "dai_usd_price_feed": MockV3Aggregator,
-    "fau_token": MockDAI,
-    "weth_token": MockWETH,
-    "link_token": LinkToken
+    "oracle": MockOracle,
 }
+
+DECIMALS = 18
+INITIAL_VALUE = 1000_00000000
+BASE_FEE = 100000000000000000  # The premium
+GAS_PRICE_LINK = 1e9  # Some value calculated depending on the Layer 1 cost and Link
+# TEMP??
+KEPT_BALANCE = web3.toWei(100, "ether")
+
+
+def is_verifiable_contract() -> bool:
+    return config["networks"][network.show_active()].get("verify", False)
+
 
 def get_account(index=None, id=None):
     if index:
         return accounts[index]
-    # if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS or network.show_active() in FORKED_LOCAL_ENVIRONMENTS:
-    if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:    
+    if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         return accounts[0]
     if id:
         return accounts.load(id)
     return accounts.add(config["wallets"]["from_key"])
+
+
+def get_contract(contract_name):
+    """If you want to use this function, go to the brownie config and add a new entry for
+    the contract that you want to be able to 'get'. Then add an entry in the variable 'contract_to_mock'.
+    You'll see examples like the 'link_token'.
+        This script will then either:
+            - Get a address from the config
+            - Or deploy a mock to use for a network that doesn't have it
+        Args:
+            contract_name (string): This is the name that is referred to in the
+            brownie config and 'contract_to_mock' variable.
+        Returns:
+            brownie.network.contract.ProjectContract: The most recently deployed
+            Contract of the type specificed by the dictionary. This could be either
+            a mock or the 'real' contract on a live network.
+    """
+    contract_type = contract_to_mock[contract_name]
+    if network.show_active() in NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        if len(contract_type) <= 0:
+            deploy_mocks()
+        contract = contract_type[-1]
+    else:
+        try:
+            contract_address = config["networks"][network.show_active()][contract_name]
+            contract = Contract.from_abi(
+                contract_type._name, contract_address, contract_type.abi
+            )
+        except KeyError:
+            print(
+                f"{network.show_active()} address not found, perhaps you should add it to the config or deploy mocks?"
+            )
+            print(
+                f"brownie run scripts/deploy_mocks.py --network {network.show_active()}"
+            )
+    return contract
+
+
+def fund_with_link(
+    contract_address, account=None, link_token=None, amount=1000000000000000000
+):
+    account = account if account else get_account()
+    link_token = link_token if link_token else get_contract("link_token")
+    ### Keep this line to show how it could be done without deploying a mock
+    # tx = interface.LinkTokenInterface(link_token.address).transfer(
+    #     contract_address, amount, {"from": account}
+    # )
+    tx = link_token.transfer(contract_address, amount, {"from": account})
+    print("Funded {}".format(contract_address))
+    return tx
+
+
+def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_VALUE):
+    """
+    Use this script if you want to deploy mocks to a testnet
+    """
+    print(f"The active network is {network.show_active()}")
+    print("Deploying Mocks...")
+    account = get_account()
+    print("Deploying Mock Link Token...")
+    link_token = LinkToken.deploy({"from": account})
+    print("Deploying Mock Price Feed...")
+    mock_price_feed = MockV3Aggregator.deploy(
+        decimals, initial_value, {"from": account}
+    )
+    print(f"Deployed to {mock_price_feed.address}")
+    print("Deploying Mock VRFCoordinator...")
+    mock_vrf_coordinator = VRFCoordinatorV2Mock.deploy(
+        BASE_FEE, GAS_PRICE_LINK, {"from": account}
+    )
+    print(f"Deployed to {mock_vrf_coordinator.address}")
+
+    print("Deploying Mock Oracle...")
+    mock_oracle = MockOracle.deploy(link_token.address, {"from": account})
+    print(f"Deployed to {mock_oracle.address}")
+
+    print("Deploying Mock Operator...")
+    mock_operator = MockOperator.deploy(link_token.address, account, {"from": account})
+    print(f"Deployed to {mock_operator.address}")
+
+    print("Mocks Deployed!")
+
+
+def listen_for_event(brownie_contract, event, timeout=200, poll_interval=2):
+    """Listen for an event to be fired from a contract.
+    We are waiting for the event to return, so this function is blocking.
+    Args:
+        brownie_contract ([brownie.network.contract.ProjectContract]):
+        A brownie contract of some kind.
+        event ([string]): The event you'd like to listen for.
+        timeout (int, optional): The max amount in seconds you'd like to
+        wait for that event to fire. Defaults to 200 seconds.
+        poll_interval ([int]): How often to call your node to check for events.
+        Defaults to 2 seconds.
+    """
+    web3_contract = web3.eth.contract(
+        address=brownie_contract.address, abi=brownie_contract.abi
+    )
+    start_time = time.time()
+    current_time = time.time()
+    event_filter = web3_contract.events[event].createFilter(fromBlock="latest")
+    while current_time - start_time < timeout:
+        for event_response in event_filter.get_new_entries():
+            if event in event_response.event:
+                print("Found event!")
+                return event_response
+        time.sleep(poll_interval)
+        current_time = time.time()
+    print("Timeout reached, no event found.")
+    return {"event": None}
+
+
+def get_verify_status():
+    verify = (
+        config["networks"][network.show_active()]["verify"]
+        if config["networks"][network.show_active()].get("verify")
+        else False
+    )
+    return verify
+
+# def transfer_tokens(token, amount):
+#     tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
+#     tx.wait(1)
+
+def deploy_mock_protocol_in_use():
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    account = get_account()
+    gwin_ERC20 = GwinToken.deploy({"from": account})
+    gwin_protocol = GwinProtocol.deploy(
+        gwin_ERC20.address, 
+        get_contract("eth_usd_price_feed").address, 
+        get_contract("link_token").address, 
+        {"from": account}, 
+        publish_source=config["networks"][network.show_active()]["verify"]
+    )
+    eth_usd_price_feed = get_contract("eth_usd_price_feed")
+    eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account})
+    tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
+    tx.wait(1)
+    non_owner = get_account(index=1) # Alice
+    non_owner_two = get_account(index=2) # Bob
+    non_owner_three = get_account(index=3) # Chris
+    non_owner_four = get_account(index=4) # Dan
+    tx = gwin_protocol.initializeProtocol({"from": account, "value": web3.toWei(20, "ether")})
+    tx.wait(1)
+
+    ################### tx1 ###################
+    eth_usd_price_feed.updateAnswer(1200_00000000, {"from": account})
+    #                                     isCooled, isHeated, cAmount, hAmount {from, msg.value}
+    txOne = gwin_protocol.depositToTranche(True, False, web3.toWei(1, "ether"), 0, {"from": non_owner, "value": web3.toWei(1, "ether")})
+    txOne.wait(1)
+
+    ################### tx2 ###################
+    eth_usd_price_feed.updateAnswer(1400_00000000, {"from": account})
+    #              DEPOSIT              isCooled, isHeated, cAmount, hAmount {from, msg.value}
+    txTwo = gwin_protocol.depositToTranche(False, True, 0, web3.toWei(1, "ether"), {"from": non_owner_two, "value": web3.toWei(1, "ether")})
+    txTwo.wait(1)
+    ################### tx3 ###################
+    eth_usd_price_feed.updateAnswer(1300_00000000, {"from": account})
+    #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
+    txThree = gwin_protocol.withdrawFromTranche(True, False, 0, 0, True, {"from": non_owner})
+    txThree.wait(1)
+
+    return gwin_protocol, gwin_ERC20, eth_usd_price_feed
 
 def rounded(val):
     val = val / 100000000
@@ -81,192 +253,3 @@ def roundedDec(val):
 def round_up(n, decimals=0):
     multiplier = 10 ** decimals
     return math.ceil(n * multiplier) / multiplier
-
-# *args allows for any number of arguments afterward
-def encode_function_data(initializer=None, *args):
-    """Encodes the function call so we can work with an initializer
-
-    Args:
-        initializer ([brownie.network.contract.ContractTx], optional):
-        The initializer function we want to call. Example: 'box.store'.
-        Defaults to None.
-
-        args (Any, options):
-        The arguments to pass to the inititalizer function
-
-        Returns:
-        [bytes]: Return the encoded bytes.
-    
-    """
-    #  we are encoding "initializer=box.store, 1" into bytes so that our smart contracts know
-    #  which function to call. If there is no initializer or it's blank, we return an empty hex
-    #  string and our smart contract will know it is blank.
-    if len(args) == 0 or not initializer:
-        return eth_utils.to_bytes(hexstr="0x")
-    return initializer.encode_input(*args)
-
-# This function covers all the different way you might call an upgrade to your smart contract
-def upgrade(
-    account, 
-    proxy, # This is the proxy contract, it directs the actions to the right contract
-    new_implementation_address, # This is the new implementation
-    proxy_admin_contract=None, # If there is an admin contract
-    initializer=None, # like box.store
-    *args # this could be many arguments, or it could be none
-):
-    # Checks for a proxy contract
-    if proxy_admin_contract:
-        # Checks for an initializer
-        if initializer:
-            # Encode the function data
-            encoded_function_call = encode_function_data(initializer, *args)
-            # Takes the proxy_admin_contract and uses the proxyAdmin.sol to call upgrade
-            transaction = proxy_admin_contract.upgradeAndCall(
-                proxy.address,
-                new_implementation_address,
-                encoded_function_call,
-                {"from": account}
-            )
-        # If they don't have an initializer, we don't need to encode a function call
-        else:
-            # This simply upgrades it, but doesn't call
-            transaction = proxy_admin_contract.upgrade(
-                proxy.address, new_implementation_address, {"from": account}
-            )
-    # If it doesn't have a proxy admin
-    else:
-        # Check for an inititializer
-        if initializer:
-            # If there is an initializer, then we have to encode that function call
-            encoded_function_call = encode_function_data(initializer, *args)
-            # This is without the proxy_admin
-            transaction = proxy.upgradeToAndCall(
-                new_implementation_address, encoded_function_call, {"from":account}
-            )
-        # No proxy_admin and no initializer to encode a function call for
-        else: 
-            transaction = proxy.upgradeTo(new_implementation_address, {"from": account})
-    return transaction
-
-def get_contract(contract_name):
-    """If you want to use this function, go to the brownie config and add a new entry for
-    the contract that you want to be able to 'get'. Then add an entry in the in the variable 'contract_to_mock'.
-    You'll see examples like the 'link_token'.
-        This script will then either:
-            - Get a address from the config
-            - Or deploy a mock to use for a network that doesn't have it
-        Args:
-            contract_name (string): This is the name that is refered to in the
-            brownie config and 'contract_to_mock' variable.
-        Returns:
-            brownie.network.contract.ProjectContract: The most recently deployed
-            Contract of the type specificed by the dictonary. This could be either
-            a mock or the 'real' contract on a live network.
-    """
-    contract_type = contract_to_mock[contract_name]
-    if network.show_active() in NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        if len(contract_type) <= 0:
-            deploy_mocks()
-        contract = contract_type[-1]
-    else:
-        try:
-            contract_address = config["networks"][network.show_active()][contract_name]
-            contract = Contract.from_abi(
-                contract_type._name, contract_address, contract_type.abi
-            )
-        except KeyError:
-            print(
-                f"{network.show_active()} address not found, perhaps you should add it to the config or deploy mocks?"
-            )
-            print(
-                f"brownie run scripts/deploy_mocks.py --network {network.show_active()}"
-            )
-    return contract
-
-
-def fund_with_link(
-    contract_address, account=None, link_token=None, amount=1000000000000000000
-):
-    account = account if account else get_account()
-    link_token = link_token if link_token else get_contract("link_token")
-    tx = interface.LinkTokenInterface(link_token).transfer(
-        contract_address, amount, {"from": account}
-    )
-    print("Funded {}".format(contract_address))
-    return tx
-
-
-def get_verify_status():
-    verify = (
-        config["networks"][network.show_active()]["verify"]
-        if config["networks"][network.show_active()].get("verify")
-        else False
-    )
-    return verify
-
-def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_PRICE_FEED_VALUE):
-    """
-    Use this script if you want to deploy mocks to a testnet
-    """
-    print(f"The active network is {network.show_active()}")
-    print("Deploying Mocks...")
-    account = get_account()
-    print("Deploying Mock Link Token...")
-    link_token = LinkToken.deploy({"from": account})
-    print("Deploying Mock Price Feed...")
-    mock_price_feed = MockV3Aggregator.deploy(
-        decimals, initial_value, {"from": account}
-    )
-    print(f"Deployed to {mock_price_feed.address}")
-    print("Deploying Mock DAI...")
-    dai_token = MockDAI.deploy({"from": account})
-    print(f"Deployed to {dai_token.address}")
-    print("Deploying Mock WETH")
-    weth_token = MockWETH.deploy({"from": account})
-    print(f"Deployed to {weth_token.address}")
-
-# def transfer_tokens(token, amount):
-#     tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
-#     tx.wait(1)
-
-def deploy_mock_protocol_in_use():
-    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        pytest.skip("Only for local testing!")
-    account = get_account()
-    gwin_ERC20 = GwinToken.deploy({"from": account})
-    gwin_protocol = GwinProtocol.deploy(
-        gwin_ERC20.address, 
-        get_contract("eth_usd_price_feed").address, 
-        get_contract("link_token").address, 
-        {"from": account}, 
-        publish_source=config["networks"][network.show_active()]["verify"]
-    )
-    eth_usd_price_feed = get_contract("eth_usd_price_feed")
-    eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account})
-    tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
-    tx.wait(1)
-    non_owner = get_account(index=1) # Alice
-    non_owner_two = get_account(index=2) # Bob
-    non_owner_three = get_account(index=3) # Chris
-    non_owner_four = get_account(index=4) # Dan
-    tx = gwin_protocol.initializeProtocol({"from": account, "value": Web3.toWei(20, "ether")})
-    tx.wait(1)
-
-    ################### tx1 ###################
-    eth_usd_price_feed.updateAnswer(1200_00000000, {"from": account})
-    #                                     isCooled, isHeated, cAmount, hAmount {from, msg.value}
-    txOne = gwin_protocol.depositToTranche(True, False, Web3.toWei(1, "ether"), 0, {"from": non_owner, "value": Web3.toWei(1, "ether")})
-    txOne.wait(1)
-
-    ################### tx2 ###################
-    eth_usd_price_feed.updateAnswer(1400_00000000, {"from": account})
-    #              DEPOSIT              isCooled, isHeated, cAmount, hAmount {from, msg.value}
-    txTwo = gwin_protocol.depositToTranche(False, True, 0, Web3.toWei(1, "ether"), {"from": non_owner_two, "value": Web3.toWei(1, "ether")})
-    txTwo.wait(1)
-    ################### tx3 ###################
-    eth_usd_price_feed.updateAnswer(1300_00000000, {"from": account})
-    #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
-    txThree = gwin_protocol.withdrawFromTranche(True, False, 0, 0, True, {"from": non_owner})
-    txThree.wait(1)
-
-    return gwin_protocol, gwin_ERC20, eth_usd_price_feed

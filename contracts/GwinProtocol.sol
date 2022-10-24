@@ -345,7 +345,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 ethStakedBalance[addrC].cBal = 0;
             }
             if (hEthBal == 0) {
-                // if tranche is liquidated, reset all to zero
+                // if tranche is liquidated, reset user to zero
                 ethStakedBalance[addrC].hBal = 0;
                 ethStakedBalance[addrC].hPercent = 0;
             }
