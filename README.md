@@ -1,6 +1,6 @@
 # Gwin Protocol
 
-Gwin Protocol essentially allows users to either “cool off” or “heat up” a crypto asset to adjust their exposure to suit their risk profile. The user simply selects their desired “heat” level and deposits to the protocol.
+Gwin Protocol allows users to either “cool off” or “heat up” a crypto asset to adjust their exposure to suit their risk profile. The user simply selects their desired “heat” level and deposits to the protocol.
 
 The process is drastically simplified and understandable as compared to complicated options markets and other alternatives. The protocol has a single pool of the deposited asset, currently ETH, that brings together risk seekers with their more conservative counterparts and creates a way for them to increase or decrease their ETH exposure, relative to USD, without a specific counterparty, order book, or contract length.
 
