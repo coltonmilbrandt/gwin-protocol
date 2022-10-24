@@ -118,10 +118,10 @@ def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_VALUE):
         decimals, initial_value, {"from": account}
     )
     print(f"Deployed to {mock_price_feed.address}")
-    print("Deploying Mock VRFCoordinator...")
-    mock_vrf_coordinator = VRFCoordinatorV2Mock.deploy(
-        BASE_FEE, GAS_PRICE_LINK, {"from": account}
-    )
+    # print("Deploying Mock VRFCoordinator...")
+    # mock_vrf_coordinator = VRFCoordinatorV2Mock.deploy(
+    #     BASE_FEE, GAS_PRICE_LINK, {"from": account}
+    # )
     print(f"Deployed to {mock_vrf_coordinator.address}")
 
     print("Deploying Mock Oracle...")

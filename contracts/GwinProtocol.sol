@@ -90,10 +90,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ethStakedBalance[msg.sender].hPercent = bps;
         hEthBal = splitAmount;
         protocol_state = PROTOCOL_STATE.OPEN;
-        // TEMP replace
         ethUsd = retrieveCurrentEthUsd();
         lastSettledEthUsd = ethUsd;
-        // end TEMP
     }
 
     /// DEPOSIT /// - used to deposit to cooled or heated tranche, or both
@@ -697,5 +695,40 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             heatedBalAfterAllocation
         );
         return (hEthBalSim, cEthBalSim);
+    }
+
+    function getRangeOfReturns(
+        address _address,
+        bool _isCooled,
+        bool _isHeated,
+        bool _isAll
+    ) public view returns (int[] memory) {
+        uint ethUsdPrice = retrieveCurrentEthUsd();
+        int currentPercent = -50_0000000000;
+        int ethUsdAtIndex;
+        int[] memory estBals = new int[](11);
+        for (uint index = 0; index < 11; index++) {
+            ethUsdAtIndex =
+                (int(ethUsdPrice) * (int(bps) + currentPercent)) /
+                int(bps);
+            uint hBalEst;
+            uint cBalEst;
+            (hBalEst, cBalEst) = simulateInteract(uint(ethUsdAtIndex));
+            uint balanceRequested;
+            if (_isHeated == true || _isAll == true) {
+                balanceRequested =
+                    (hBalEst * ethStakedBalance[_address].hPercent) /
+                    bps;
+            }
+            if (_isCooled == true || _isAll == true) {
+                balanceRequested +=
+                    (cBalEst * ethStakedBalance[_address].cPercent) /
+                    bps;
+            }
+            estBals[index] = int(balanceRequested);
+            currentPercent += 10_0000000000;
+        }
+
+        return (estBals);
     }
 }
