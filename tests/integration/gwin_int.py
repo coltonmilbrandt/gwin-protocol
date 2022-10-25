@@ -1,6 +1,6 @@
 from brownie import GwinProtocol, GwinToken, network, exceptions
 from pyparsing import null_debug_action
-from scripts.helpful_scripts import LOCAL_BLOCKCHAIN_ENVIRONMENTS, INITIAL_PRICE_FEED_VALUE, DECIMALS, get_account, get_contract, rounded, roundedDec, extra_rounded, rnd
+from scripts.helpful_scripts import LOCAL_BLOCKCHAIN_ENVIRONMENTS, INITIAL_VALUE, DECIMALS, get_account, get_contract, rounded, roundedDec, extra_rounded, rnd
 from scripts.deploy import deploy_gwin_protocol_and_gwin_token
 from web3 import Web3
 import pytest

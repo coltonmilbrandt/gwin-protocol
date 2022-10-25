@@ -48,6 +48,8 @@ def test_initialize_protocol():
     assert gwin_protocol.retrieveCEthBalance.call(account.address, {"from": account}) == 10000000000000000000 # cEth for account
     assert gwin_protocol.retrieveHEthBalance.call(account.address, {"from": account}) == 10000000000000000000 # hEth for account
 
+# Legacy math tests - Left here to archive situations that passed, since nothing has changed in the math since passing.
+# NOTE: delete this if the math is adjusted
 # def test_uneven():
 #     # Arrange
 #     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
@@ -146,44 +148,72 @@ def test_estimate_balances():
     eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account}) # Started at 1300
     # Assert
     assert gwin_protocol.retrieveCurrentEthUsd() == 1000_00000000
+    
+    # Entire balance of non_owner_two
     rangeOfReturns = gwin_protocol.getRangeOfReturns(non_owner_two.address, False, False, True, {"from": account})
-    assert rangeOfReturns[0] == 280932113371062956
-    assert rangeOfReturns[1] == 466384665201171342
-    assert rangeOfReturns[2] == 598850773651248760
-    assert rangeOfReturns[3] == 698200354988806824
-    assert rangeOfReturns[4] == 775472251583802262
-    assert rangeOfReturns[5] == 837289768860593363
-    assert rangeOfReturns[6] == 887867737541604263
-    assert rangeOfReturns[7] == 930016044775780014
-    assert rangeOfReturns[8] == 965679997050240457
-    assert rangeOfReturns[9] == 994805741012481654
-    assert rangeOfReturns[10] == 1020048052446424025
+    assert rangeOfReturns[0] == 280932113371062956 # at $500/ETH
+    assert rangeOfReturns[1] == 466384665201171342 # at $600/ETH
+    assert rangeOfReturns[2] == 598850773651248760 # at $700/ETH
+    assert rangeOfReturns[3] == 698200354988806824 # at $800/ETH
+    assert rangeOfReturns[4] == 775472251583802262 # at $900/ETH
+    assert rangeOfReturns[5] == 837289768860593363 # at $1000/ETH
+    assert rangeOfReturns[6] == 887867737541604263 # at $1100/ETH
+    assert rangeOfReturns[7] == 930016044775780014 # at $1200/ETH
+    assert rangeOfReturns[8] == 965679997050240457 # at $1300/ETH
+    assert rangeOfReturns[9] == 994805741012481654 # at $1400/ETH
+    assert rangeOfReturns[10] == 1020048052446424025 # at $1500/ETH
 
+    # Heated balance of non_owner_two
     rangeOfReturns = gwin_protocol.getRangeOfReturns(non_owner_two.address, False, True, False, {"from": account})
-    assert rangeOfReturns[0] == 280932113371062956
-    assert rangeOfReturns[1] == 466384665201171342
-    assert rangeOfReturns[2] == 598850773651248760
-    assert rangeOfReturns[3] == 698200354988806824
-    assert rangeOfReturns[4] == 775472251583802262
-    assert rangeOfReturns[5] == 837289768860593363
-    assert rangeOfReturns[6] == 887867737541604263
-    assert rangeOfReturns[7] == 930016044775780014
-    assert rangeOfReturns[8] == 965679997050240457
-    assert rangeOfReturns[9] == 994805741012481654
-    assert rangeOfReturns[10] == 1020048052446424025
+    assert rangeOfReturns[0] == 280932113371062956 # at $500/ETH
+    assert rangeOfReturns[1] == 466384665201171342 # at $600/ETH
+    assert rangeOfReturns[2] == 598850773651248760 # at $700/ETH
+    assert rangeOfReturns[3] == 698200354988806824 # at $800/ETH
+    assert rangeOfReturns[4] == 775472251583802262 # at $900/ETH
+    assert rangeOfReturns[5] == 837289768860593363 # at $1000/ETH
+    assert rangeOfReturns[6] == 887867737541604263 # at $1100/ETH
+    assert rangeOfReturns[7] == 930016044775780014 # at $1200/ETH
+    assert rangeOfReturns[8] == 965679997050240457 # at $1300/ETH
+    assert rangeOfReturns[9] == 994805741012481654 # at $1400/ETH
+    assert rangeOfReturns[10] == 1020048052446424025 # at $1500/ETH
 
+    # Cooled balance of non_owner_two
     rangeOfReturns = gwin_protocol.getRangeOfReturns(non_owner_two.address, True, False, False, {"from": account})
-    assert rangeOfReturns[0] == 0
-    assert rangeOfReturns[1] == 0
-    assert rangeOfReturns[2] == 0
-    assert rangeOfReturns[3] == 0
-    assert rangeOfReturns[4] == 0
-    assert rangeOfReturns[5] == 0
-    assert rangeOfReturns[6] == 0
-    assert rangeOfReturns[7] == 0
-    assert rangeOfReturns[8] == 0
-    assert rangeOfReturns[9] == 0
-    assert rangeOfReturns[10] == 0
+    assert rangeOfReturns[0] == 0 # at $500/ETH
+    assert rangeOfReturns[1] == 0 # at $600/ETH
+    assert rangeOfReturns[2] == 0 # at $700/ETH
+    assert rangeOfReturns[3] == 0 # at $800/ETH
+    assert rangeOfReturns[4] == 0 # at $900/ETH
+    assert rangeOfReturns[5] == 0 # at $1000/ETH
+    assert rangeOfReturns[6] == 0 # at $1100/ETH
+    assert rangeOfReturns[7] == 0 # at $1200/ETH
+    assert rangeOfReturns[8] == 0 # at $1300/ETH
+    assert rangeOfReturns[9] == 0 # at $1400/ETH
+    assert rangeOfReturns[10] == 0 # at $1500/ETH
+
+    # Cooled balance of account
+    rangeOfReturns = gwin_protocol.getRangeOfReturns(account.address, True, False, False, {"from": account})
+    assert rangeOfReturns[0] == 17496370578385007258 # at $500/ETH
+    assert rangeOfReturns[1] == 15162899476969674201 # at $600/ETH
+    assert rangeOfReturns[4] == 11273780974610785771 # at $900/ETH
+    assert rangeOfReturns[6] == 9859556064653008159 # at $1100/ETH
+    assert rangeOfReturns[10] == 8196387011636940558 # at $1500/ETH
+
+    # Heated balance of account
+    rangeOfReturns = gwin_protocol.getRangeOfReturns(account.address, False, True, False, {"from": account})
+    assert rangeOfReturns[0] == 3253917968465402192 # at $500/ETH
+    assert rangeOfReturns[1] == 5401936518059627002 # at $600/ETH
+    assert rangeOfReturns[4] == 8981967434039773630 # at $900/ETH
+    assert rangeOfReturns[6] == 10283796858038133161 # at $1100/ETH
+    assert rangeOfReturns[10] == 11814785596154074473 # at $1500/ETH
+
+    # Entire balance of account
+    rangeOfReturns = gwin_protocol.getRangeOfReturns(account.address, False, False, True, {"from": account})
+    assert rangeOfReturns[0] == 20750288546850409450 # at $500/ETH
+    assert rangeOfReturns[1] == 20564835995029301203 # at $600/ETH
+    assert rangeOfReturns[4] == 20255748408650559401 # at $900/ETH
+    assert rangeOfReturns[6] == 20143352922691141320 # at $1100/ETH
+    assert rangeOfReturns[10] == 20011172607791015031 # at $1500/ETH
 
 def test_withdrawal_greater_than_user_balance():
     # Arrange
