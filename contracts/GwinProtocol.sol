@@ -506,19 +506,23 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         // get tranche balance and basis points for expected return
         if (_isCooled == true) {
             trancheBal = cEthBal; // in Wei
+            // CHANGE to variable
             r = -50_0000000000; // basis points
         } else {
             trancheBal = hEthBal; // in Wei
+            // CHANGE to variable
             r = 50_0000000000; // basis points
         }
         // TEMP
         // require(trancheBal > 0, "Tranche must have a balance.");
         require(
+            // CHANGE to variable
             r == -50_0000000000 || r == 50_0000000000,
             "Tranche must have a valid multiplier value."
         );
         int256 trancheChange = (int(trancheBal) * int(_currentEthUsd)) -
             (int(trancheBal) * int(lastSettledEthUsd));
+        // CHANGE to variable
         int256 expectedPayout = (trancheChange * ((1 * int(bps)) + r)) /
             int(bps);
         int256 allocationDifference = expectedPayout - trancheChange;
@@ -530,7 +534,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     function interact() private returns (uint, uint) {
         uint256 currentEthUsd = retrieveCurrentEthUsd();
         ethUsd = currentEthUsd;
-        int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
+        int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points
         // find expected return and use it to calculate allocation difference for each tranche
         (
             int256 cooledAllocationDiff,
