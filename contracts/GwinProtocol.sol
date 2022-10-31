@@ -14,14 +14,22 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint hPercent;
     }
 
-    // user address -> user balances struct
-    mapping(address => Bal) public ethStakedBalance;
+    // // user address -> user balances struct
+    // mapping(address => Bal) public ethStakedBalance;
+
+    // pool ID -> user address -> user balances struct
+    mapping(uint => mapping(address => Bal)) public ethStakedBalance;
+
     // token address -> staker address -> amount
     mapping(address => mapping(address => uint256)) public stakingBalance;
     // staker address -> unique tokens staked
     mapping(address => uint256) public uniquePositions;
-    // address -> isUnique
-    mapping(address => bool) public isUniqueEthStaker;
+    // pool ID    ->   address  ->  isUnique
+    mapping(uint => mapping(address => bool)) public isUniqueEthStaker;
+
+    //    pool ID --> struct
+    mapping(uint => Pool) public pool;
+
     // array of ETH stakers
     address[] public ethStakers;
     // array of stakers
@@ -30,14 +38,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     address[] public allowedTokens;
 
     AggregatorV3Interface internal ethUsdPriceFeed;
-
-    enum PROTOCOL_STATE {
-        OPEN, //1
-        CLOSED, //2
-        CALCULATING //3
-    }
-
-    PROTOCOL_STATE public protocol_state;
 
     // ********* Decimal Values *********
     uint256 decimals = 10**18;
@@ -49,6 +49,20 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     uint256 ethUsd;
     uint256 hEthBal;
     uint256 cEthBal;
+    uint nextPoolId = 0;
+
+    struct Pool {
+        uint256 lastSettledEthUsd; // change to last settled price
+        uint256 ethUsd; // change to current price
+        // add price feed address, may need extra work to get from commodities to USD to ETH
+        uint256 hEthBal;
+        uint256 cEthBal;
+        uint256 hRate;
+        uint256 cRate;
+        uint8 poolType; // as in classic or modified
+        // may need protocol state added
+    }
+
     // Potential ISSUE if these can be changed, but I doubt that's the case
 
     // // *********  Test Values   *********
@@ -65,16 +79,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     ) public {
         // pass in the address from the GwinToken.sol contract
         gwinToken = IERC20(_gwinTokenAddress);
-        protocol_state = PROTOCOL_STATE.CLOSED;
         ethUsdPriceFeed = AggregatorV3Interface(_priceFeedAddress);
     }
 
     /// INITIALIZE-PROTOCOL /// - this deposits an equal amount to each tranche to initialize the protocol
-    function initializeProtocol() external payable {
-        require(
-            protocol_state == PROTOCOL_STATE.CLOSED,
-            "The Protocol is already initialized."
-        );
+    function initializeProtocol(uint8 _type) external payable return (uint){
+        pool[nextPoolId].poolType = _type;
         require(
             cEthBal == 0 && hEthBal == 0,
             "The Protocol already has funds deposited."
@@ -89,9 +99,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ethStakedBalance[msg.sender].hBal += splitAmount;
         ethStakedBalance[msg.sender].hPercent = bps;
         hEthBal = splitAmount;
-        protocol_state = PROTOCOL_STATE.OPEN;
         ethUsd = retrieveCurrentEthUsd();
         lastSettledEthUsd = ethUsd;
+        return nextPoolId - 1;
     }
 
     /// DEPOSIT /// - used to deposit to cooled or heated tranche, or both
@@ -101,10 +111,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint _cAmount,
         uint _hAmount
     ) external payable {
-        require(
-            protocol_state == PROTOCOL_STATE.OPEN,
-            "The Protocol has not been initialized yet."
-        );
         require(msg.value > 0, "Amount must be greater than zero.");
         require(_isCooled == true || _isHeated == true);
         require(_cAmount + _hAmount <= msg.value);
@@ -158,10 +164,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint _hAmount,
         bool _isAll
     ) external nonReentrant {
-        require(
-            protocol_state == PROTOCOL_STATE.OPEN,
-            "The Protocol has not been initialized yet."
-        );
         // TEMP ||
         require(
             cEthBal > 0 || hEthBal > 0,
