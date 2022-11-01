@@ -118,7 +118,7 @@ def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_VALUE):
         decimals, initial_value, {"from": account}
     )
     print(f"Deployed to {mock_price_feed.address}")
-    
+
     # print("Deploying Mock VRFCoordinator...")
     # mock_vrf_coordinator = VRFCoordinatorV2Mock.deploy(
     #     BASE_FEE, GAS_PRICE_LINK, {"from": account}
@@ -197,24 +197,24 @@ def deploy_mock_protocol_in_use():
     non_owner_two = get_account(index=2) # Bob
     non_owner_three = get_account(index=3) # Chris
     non_owner_four = get_account(index=4) # Dan
-    tx = gwin_protocol.initializeProtocol({"from": account, "value": web3.toWei(20, "ether")})
+    tx = gwin_protocol.initializeProtocol(0, {"from": account, "value": web3.toWei(20, "ether")})
     tx.wait(1)
 
     ################### tx1 ###################
     eth_usd_price_feed.updateAnswer(1200_00000000, {"from": account})
     #                                     isCooled, isHeated, cAmount, hAmount {from, msg.value}
-    txOne = gwin_protocol.depositToTranche(True, False, web3.toWei(1, "ether"), 0, {"from": non_owner, "value": web3.toWei(1, "ether")})
+    txOne = gwin_protocol.depositToTranche(0, True, False, web3.toWei(1, "ether"), 0, {"from": non_owner, "value": web3.toWei(1, "ether")})
     txOne.wait(1)
 
     ################### tx2 ###################
     eth_usd_price_feed.updateAnswer(1400_00000000, {"from": account})
     #              DEPOSIT              isCooled, isHeated, cAmount, hAmount {from, msg.value}
-    txTwo = gwin_protocol.depositToTranche(False, True, 0, web3.toWei(1, "ether"), {"from": non_owner_two, "value": web3.toWei(1, "ether")})
+    txTwo = gwin_protocol.depositToTranche(0, False, True, 0, web3.toWei(1, "ether"), {"from": non_owner_two, "value": web3.toWei(1, "ether")})
     txTwo.wait(1)
     ################### tx3 ###################
     eth_usd_price_feed.updateAnswer(1300_00000000, {"from": account})
     #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
-    txThree = gwin_protocol.withdrawFromTranche(True, False, 0, 0, True, {"from": non_owner})
+    txThree = gwin_protocol.withdrawFromTranche(0, True, False, 0, 0, True, {"from": non_owner})
     txThree.wait(1)
 
     return gwin_protocol, gwin_ERC20, eth_usd_price_feed
