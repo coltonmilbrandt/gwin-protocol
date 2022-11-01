@@ -30,12 +30,14 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     //    pool ID --> struct
     mapping(uint => Pool) public pool;
 
-    // array of ETH stakers
-    address[] public ethStakers;
+    // pool ID --> array of ETH stakers
+    mapping(uint => address[]) public ethStakers;
     // array of stakers
     address[] public stakers;
     // array of the allowed tokens
     address[] public allowedTokens;
+    // array of pool IDs
+    uint[] public poolIds;
 
     AggregatorV3Interface internal ethUsdPriceFeed;
 
@@ -45,15 +47,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     uint256 bps = 10**12;
 
     // ************* Values *************
-    uint256 lastSettledEthUsd;
-    uint256 ethUsd;
-    uint256 hEthBal;
-    uint256 cEthBal;
-    uint nextPoolId = 0;
+    uint newPoolId = 0;
 
     struct Pool {
-        uint256 lastSettledEthUsd; // change to last settled price
-        uint256 ethUsd; // change to current price
+        uint256 lastSettledUsdPrice; // change to last settled price
+        uint256 currentUsdPrice; // change to current price
         // add price feed address, may need extra work to get from commodities to USD to ETH
         uint256 hEthBal;
         uint256 cEthBal;
@@ -83,29 +81,34 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     /// INITIALIZE-PROTOCOL /// - this deposits an equal amount to each tranche to initialize the protocol
-    function initializeProtocol(uint8 _type) external payable return (uint){
-        pool[nextPoolId].poolType = _type;
+    function initializeProtocol(uint8 _type) external payable returns (uint) {
+        // ADD require that pool ID is not taken
+        poolIds.push(newPoolId);
+        pool[newPoolId].poolType = _type;
         require(
-            cEthBal == 0 && hEthBal == 0,
+            pool[newPoolId].cEthBal == 0 && pool[newPoolId].hEthBal == 0,
             "The Protocol already has funds deposited."
         );
-        if (isUniqueEthStaker[msg.sender] == false) {
-            ethStakers.push(msg.sender);
+        if (isUniqueEthStaker[newPoolId][msg.sender] == false) {
+            ethStakers[newPoolId].push(msg.sender);
+            isUniqueEthStaker[newPoolId][msg.sender] = true;
         }
         uint splitAmount = msg.value / 2;
-        ethStakedBalance[msg.sender].cBal += splitAmount;
-        ethStakedBalance[msg.sender].cPercent = bps;
-        cEthBal = splitAmount;
-        ethStakedBalance[msg.sender].hBal += splitAmount;
-        ethStakedBalance[msg.sender].hPercent = bps;
-        hEthBal = splitAmount;
-        ethUsd = retrieveCurrentEthUsd();
-        lastSettledEthUsd = ethUsd;
-        return nextPoolId - 1;
+        ethStakedBalance[newPoolId][msg.sender].cBal += splitAmount;
+        ethStakedBalance[newPoolId][msg.sender].cPercent = bps;
+        pool[newPoolId].cEthBal = splitAmount;
+        ethStakedBalance[newPoolId][msg.sender].hBal += splitAmount;
+        ethStakedBalance[newPoolId][msg.sender].hPercent = bps;
+        pool[newPoolId].hEthBal = splitAmount;
+        pool[newPoolId].currentUsdPrice = retrieveCurrentUsdPrice(newPoolId);
+        pool[newPoolId].lastSettledUsdPrice = pool[newPoolId].currentUsdPrice;
+        newPoolId++;
+        return newPoolId - 1;
     }
 
     /// DEPOSIT /// - used to deposit to cooled or heated tranche, or both
     function depositToTranche(
+        uint _poolId,
         bool _isCooled,
         bool _isHeated,
         uint _cAmount,
@@ -116,30 +119,31 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         require(_cAmount + _hAmount <= msg.value);
 
         // Interact to rebalance Tranches with new USD price
-        interact();
+        interact(_poolId);
         // Re-adjust to update balances after price change
-        reAdjust(true, _isCooled, _isHeated);
+        reAdjust(_poolId, true, _isCooled, _isHeated);
         // Deposit ETH
         if (_isCooled == true && _isHeated == false) {
-            ethStakedBalance[msg.sender].cBal += msg.value;
-            cEthBal += msg.value;
+            ethStakedBalance[_poolId][msg.sender].cBal += msg.value;
+            pool[_poolId].cEthBal += msg.value;
         } else if (_isCooled == false && _isHeated == true) {
-            ethStakedBalance[msg.sender].hBal += msg.value;
-            hEthBal += msg.value;
+            ethStakedBalance[_poolId][msg.sender].hBal += msg.value;
+            pool[_poolId].hEthBal += msg.value;
         } else if (_isCooled == true && _isHeated == true) {
-            ethStakedBalance[msg.sender].cBal += _cAmount;
-            cEthBal += _cAmount;
-            ethStakedBalance[msg.sender].hBal += _hAmount;
-            hEthBal += _hAmount;
+            ethStakedBalance[_poolId][msg.sender].cBal += _cAmount;
+            pool[_poolId].cEthBal += _cAmount;
+            ethStakedBalance[_poolId][msg.sender].hBal += _hAmount;
+            pool[_poolId].hEthBal += _hAmount;
         }
-        if (isUniqueEthStaker[msg.sender] == false) {
-            ethStakers.push(msg.sender);
+        if (isUniqueEthStaker[_poolId][msg.sender] == false) {
+            ethStakers[_poolId].push(msg.sender);
+            isUniqueEthStaker[_poolId][msg.sender] = true;
         }
         // Re-Adjust user percentages
-        reAdjust(false, _isCooled, _isHeated);
+        reAdjust(_poolId, false, _isCooled, _isHeated);
 
         // TEMP until price feed is implemented, don't want to get price again, rather use price from interact()
-        lastSettledEthUsd = ethUsd;
+        pool[_poolId].lastSettledUsdPrice = pool[_poolId].currentUsdPrice;
     }
 
     // /// PREVIEW-USER-BALANCE /// - preview balance at the current ETH/USD price
@@ -147,17 +151,18 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     //     uint heatedBalance;
     //     uint cooledBalance;
     //     (heatedBalance, cooledBalance) = simulateInteract(
-    //         retrieveCurrentEthUsd()
+    //         retrieveCurrentUsdPrice(_poolId)
     //     );
     //     uint userHeatedBalance = (heatedBalance *
-    //         ethStakedBalance[msg.sender].hPercent) / bps;
+    //         ethStakedBalance[_poolId][msg.sender].hPercent) / bps;
     //     uint userCooledBalance = (cooledBalance *
-    //         ethStakedBalance[msg.sender].cPercent) / bps;
+    //         ethStakedBalance[_poolId][msg.sender].cPercent) / bps;
     //     return (userHeatedBalance, userCooledBalance);
     // }
 
     /// WITHDRAW /// - used to withdraw from cooled or heated tranche, or both
     function withdrawFromTranche(
+        uint _poolId,
         bool _isCooled,
         bool _isHeated,
         uint _cAmount,
@@ -166,7 +171,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     ) external nonReentrant {
         // TEMP ||
         require(
-            cEthBal > 0 || hEthBal > 0,
+            pool[_poolId].cEthBal > 0 || pool[_poolId].hEthBal > 0,
             "The Protocol needs initial funds deposited."
         );
         if (_isAll == false) {
@@ -178,82 +183,87 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         require(_isCooled == true || _isHeated == true);
 
         // Interact to rebalance Tranches with new USD price
-        interact();
+        interact(_poolId);
         // Re-adjust the user balances based on price change
-        reAdjust(true, _isCooled, _isHeated);
+        reAdjust(_poolId, true, _isCooled, _isHeated);
 
         if (_isAll == true) {
             if (_isCooled == true) {
-                _cAmount = ethStakedBalance[msg.sender].cBal;
+                _cAmount = ethStakedBalance[_poolId][msg.sender].cBal;
             }
             if (_isHeated == true) {
-                _hAmount = ethStakedBalance[msg.sender].hBal;
+                _hAmount = ethStakedBalance[_poolId][msg.sender].hBal;
             }
         }
 
         require(
-            _cAmount <= ethStakedBalance[msg.sender].cBal &&
-                _hAmount <= ethStakedBalance[msg.sender].hBal,
+            _cAmount <= ethStakedBalance[_poolId][msg.sender].cBal &&
+                _hAmount <= ethStakedBalance[_poolId][msg.sender].hBal,
             "The amount to withdrawal is greater than the available balance."
         );
 
         // Withdraw ETH
         if (_cAmount > 0 && _hAmount > 0) {
             // Cooled and Heated
-            ethStakedBalance[msg.sender].cBal -= _cAmount;
-            cEthBal -= _cAmount;
-            ethStakedBalance[msg.sender].hBal -= _hAmount;
-            hEthBal -= _hAmount;
+            ethStakedBalance[_poolId][msg.sender].cBal -= _cAmount;
+            pool[_poolId].cEthBal -= _cAmount;
+            ethStakedBalance[_poolId][msg.sender].hBal -= _hAmount;
+            pool[_poolId].hEthBal -= _hAmount;
             payable(msg.sender).transfer(_cAmount + _hAmount);
         } else {
             if (_cAmount > 0 && _hAmount == 0) {
                 // Cooled, No Heated
-                ethStakedBalance[msg.sender].cBal -= _cAmount;
-                cEthBal -= _cAmount;
+                ethStakedBalance[_poolId][msg.sender].cBal -= _cAmount;
+                pool[_poolId].cEthBal -= _cAmount;
                 payable(msg.sender).transfer(_cAmount);
             } else if (_cAmount == 0 && _hAmount > 0) {
                 // Heated, No Cooled
-                ethStakedBalance[msg.sender].hBal -= _hAmount;
-                hEthBal -= _hAmount;
+                ethStakedBalance[_poolId][msg.sender].hBal -= _hAmount;
+                pool[_poolId].hEthBal -= _hAmount;
                 payable(msg.sender).transfer(_hAmount);
             }
         }
 
         // Re-Adjust user percentages
-        reAdjust(false, _isCooled, _isHeated);
+        reAdjust(_poolId, false, _isCooled, _isHeated);
 
         // TEMP until price feed is implemented, don't want to get price again, rather use price from interact()
-        lastSettledEthUsd = ethUsd;
+        pool[_poolId].lastSettledUsdPrice = pool[_poolId].currentUsdPrice;
     }
 
     /// REMOVE-FROM-ARRAY /// - removes the staker from the array of ETH stakers
-    function removeFromArray(uint index) private {
-        ethStakers[index] = ethStakers[ethStakers.length - 1];
-        ethStakers.pop();
+    function removeFromArray(uint _poolId, uint index) private {
+        ethStakers[_poolId][index] = ethStakers[_poolId][
+            ethStakers[_poolId].length - 1
+        ];
+        ethStakers[_poolId].pop();
     }
 
     // RE-ADJUST /// - adjusts affected tranche percentages and balances
     function reAdjust(
+        uint _poolId,
         bool _beforeTx,
         bool _isCooled,
         bool _isHeated
     ) private {
         if (_beforeTx == true) {
             // BEFORE deposit, only balances are affected based on percentages
-            liquidateIfZero();
+            liquidateIfZero(_poolId);
             // ISSUE stakers need removed if they get liquidated (as of now, only one is removed)
             // ISSUE this could likely be optimized to avoid performing the for loops twice when liquidated
             for (
                 uint256 ethStakersIndex = 0;
-                ethStakersIndex < ethStakers.length;
+                ethStakersIndex < ethStakers[_poolId].length;
                 ethStakersIndex++
             ) {
-                address addrC = ethStakers[ethStakersIndex];
-                ethStakedBalance[addrC].cBal =
-                    (cEthBal * ethStakedBalance[addrC].cPercent) /
+                address addrC = ethStakers[_poolId][ethStakersIndex];
+                ethStakedBalance[_poolId][addrC].cBal =
+                    (pool[_poolId].cEthBal *
+                        ethStakedBalance[_poolId][addrC].cPercent) /
                     bps;
-                ethStakedBalance[addrC].hBal =
-                    (hEthBal * ethStakedBalance[addrC].hPercent) /
+                ethStakedBalance[_poolId][addrC].hBal =
+                    (pool[_poolId].hEthBal *
+                        ethStakedBalance[_poolId][addrC].hPercent) /
                     bps;
             }
         } else {
@@ -264,17 +274,17 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 // only Cooled tranche percentage numbers are affected by cooled tx
                 for (
                     uint256 ethStakersIndex = 0;
-                    ethStakersIndex < ethStakers.length;
+                    ethStakersIndex < ethStakers[_poolId].length;
                     ethStakersIndex++
                 ) {
-                    address addrC = ethStakers[ethStakersIndex];
-                    ethStakedBalance[addrC].cPercent =
-                        (ethStakedBalance[addrC].cBal * bps) /
-                        cEthBal;
+                    address addrC = ethStakers[_poolId][ethStakersIndex];
+                    ethStakedBalance[_poolId][addrC].cPercent =
+                        (ethStakedBalance[_poolId][addrC].cBal * bps) /
+                        pool[_poolId].cEthBal;
                     // Flags index and stores for removal AFTER calculations are finished
                     if (
-                        ethStakedBalance[addrC].cBal <= 0 &&
-                        ethStakedBalance[addrC].hBal <= 0
+                        ethStakedBalance[_poolId][addrC].cBal <= 0 &&
+                        ethStakedBalance[_poolId][addrC].hBal <= 0
                     ) {
                         indexNeedsRemoved = true;
                         indexToRemove = ethStakersIndex;
@@ -284,17 +294,17 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 // only Heated tranche percentage numbers are affected by heated tx
                 for (
                     uint256 ethStakersIndex = 0;
-                    ethStakersIndex < ethStakers.length;
+                    ethStakersIndex < ethStakers[_poolId].length;
                     ethStakersIndex++
                 ) {
-                    address addrC = ethStakers[ethStakersIndex];
-                    ethStakedBalance[addrC].hPercent =
-                        (ethStakedBalance[addrC].hBal * bps) /
-                        hEthBal;
+                    address addrC = ethStakers[_poolId][ethStakersIndex];
+                    ethStakedBalance[_poolId][addrC].hPercent =
+                        (ethStakedBalance[_poolId][addrC].hBal * bps) /
+                        pool[_poolId].hEthBal;
                     // Flags index and stores for removal AFTER calculations are finished
                     if (
-                        ethStakedBalance[addrC].cBal <= 0 &&
-                        ethStakedBalance[addrC].hBal <= 0
+                        ethStakedBalance[_poolId][addrC].cBal <= 0 &&
+                        ethStakedBalance[_poolId][addrC].hBal <= 0
                     ) {
                         indexNeedsRemoved = true;
                         indexToRemove = ethStakersIndex;
@@ -304,20 +314,20 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 // Cooled and Heated tranche percentage numbers are affected by tx
                 for (
                     uint256 ethStakersIndex = 0;
-                    ethStakersIndex < ethStakers.length;
+                    ethStakersIndex < ethStakers[_poolId].length;
                     ethStakersIndex++
                 ) {
-                    address addrC = ethStakers[ethStakersIndex];
-                    ethStakedBalance[addrC].cPercent =
-                        (ethStakedBalance[addrC].cBal * bps) /
-                        cEthBal;
-                    ethStakedBalance[addrC].hPercent =
-                        (ethStakedBalance[addrC].hBal * bps) /
-                        hEthBal;
+                    address addrC = ethStakers[_poolId][ethStakersIndex];
+                    ethStakedBalance[_poolId][addrC].cPercent =
+                        (ethStakedBalance[_poolId][addrC].cBal * bps) /
+                        pool[_poolId].cEthBal;
+                    ethStakedBalance[_poolId][addrC].hPercent =
+                        (ethStakedBalance[_poolId][addrC].hBal * bps) /
+                        pool[_poolId].hEthBal;
                     // Flags index and stores for removal AFTER calculations are finished
                     if (
-                        ethStakedBalance[addrC].cBal <= 0 &&
-                        ethStakedBalance[addrC].hBal <= 0
+                        ethStakedBalance[_poolId][addrC].cBal <= 0 &&
+                        ethStakedBalance[_poolId][addrC].hBal <= 0
                     ) {
                         indexNeedsRemoved = true;
                         indexToRemove = ethStakersIndex;
@@ -326,35 +336,35 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             }
             // Remove user if balances are empty, done after calculation so array indexes are not disrupted
             if (indexNeedsRemoved == true) {
-                removeFromArray(indexToRemove);
+                removeFromArray(_poolId, indexToRemove);
             }
         }
     }
 
     /// LIQUIDATE-IF-ZERO /// - liquidates every user in a zero balance tranche
-    function liquidateIfZero() private {
+    function liquidateIfZero(uint _poolId) private {
         for (
             uint256 ethStakersIndex = 0;
-            ethStakersIndex < ethStakers.length;
+            ethStakersIndex < ethStakers[_poolId].length;
             ethStakersIndex++
         ) {
-            address addrC = ethStakers[ethStakersIndex];
-            if (cEthBal == 0) {
+            address addrC = ethStakers[_poolId][ethStakersIndex];
+            if (pool[_poolId].cEthBal == 0) {
                 // if tranche is liquidated, reset user to zero
-                ethStakedBalance[addrC].cPercent = 0;
-                ethStakedBalance[addrC].cBal = 0;
+                ethStakedBalance[_poolId][addrC].cPercent = 0;
+                ethStakedBalance[_poolId][addrC].cBal = 0;
             }
-            if (hEthBal == 0) {
+            if (pool[_poolId].hEthBal == 0) {
                 // if tranche is liquidated, reset user to zero
-                ethStakedBalance[addrC].hBal = 0;
-                ethStakedBalance[addrC].hPercent = 0;
+                ethStakedBalance[_poolId][addrC].hBal = 0;
+                ethStakedBalance[_poolId][addrC].hPercent = 0;
             }
         }
     }
 
     /// VIEW-BALANCE-FUNCTIONS /// - check balances
 
-    function retrieveCurrentEthUsd() public view returns (uint) {
+    function retrieveCurrentUsdPrice(uint _poolId) public view returns (uint) {
         (, int256 price, , , ) = ethUsdPriceFeed.latestRoundData();
         return uint(price);
     }
@@ -363,44 +373,69 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return address(this).balance;
     }
 
-    function retrieveCEthPercentBalance(address _user)
+    function retrieveCEthPercentBalance(uint _poolId, address _user)
         public
         view
         returns (uint)
     {
-        return ethStakedBalance[_user].cPercent;
+        return ethStakedBalance[_poolId][_user].cPercent;
     }
 
-    function retrieveHEthPercentBalance(address _user)
+    function retrieveHEthPercentBalance(uint _poolId, address _user)
         public
         view
         returns (uint)
     {
-        return ethStakedBalance[_user].hPercent;
+        return ethStakedBalance[_poolId][_user].hPercent;
     }
 
-    function retrieveCEthBalance(address _user) public view returns (uint) {
-        return ethStakedBalance[_user].cBal;
+    function retrieveCEthBalance(uint _poolId, address _user)
+        public
+        view
+        returns (uint)
+    {
+        return ethStakedBalance[_poolId][_user].cBal;
     }
 
-    function retrieveHEthBalance(address _user) public view returns (uint) {
-        return ethStakedBalance[_user].hBal;
+    function retrieveHEthBalance(uint _poolId, address _user)
+        public
+        view
+        returns (uint)
+    {
+        return ethStakedBalance[_poolId][_user].hBal;
     }
 
-    function retrieveAddressAtIndex(uint _index) public view returns (address) {
-        return ethStakers[_index];
+    function retrieveAddressAtIndex(uint _poolId, uint _index)
+        public
+        view
+        returns (address)
+    {
+        return ethStakers[_poolId][_index];
     }
 
-    function retrieveProtocolCEthBalance() public view returns (uint) {
-        return cEthBal;
+    function retrieveProtocolCEthBalance(uint _poolId)
+        public
+        view
+        returns (uint)
+    {
+        return pool[_poolId].cEthBal;
     }
 
-    function retrieveProtocolHEthBalance() public view returns (uint) {
-        return hEthBal;
+    function retrieveProtocolHEthBalance(uint _poolId)
+        public
+        view
+        returns (uint)
+    {
+        return pool[_poolId].hEthBal;
     }
 
-    function retrieveProtocolEthPrice() public view returns (uint, uint) {
-        return (ethUsd, lastSettledEthUsd);
+    function retrieveProtocolEthPrice(
+        uint _poolId //FIX
+    ) public view returns (uint, uint) {
+        return (
+            pool[_poolId].currentUsdPrice,
+            pool[_poolId].lastSettledUsdPrice
+        );
     }
 
     // // ****** TEMPORARY TESTING ******
@@ -417,11 +452,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     //         uint
     //     )
     // {
-    //     hEthBal = _hEthAll * decimals;
-    //     cEthBal = _cEthAll * decimals;
+    //     pool[_poolId].hEthBal = _hEthAll * decimals;
+    //     pool[_poolId].cEthBal = _cEthAll * decimals;
     //     pEthBal = (_hEthAll + _cEthAll) * decimals;
-    //     lastSettledEthUsd = _startPrice * usdDecimals;
-    //     ethUsd = _endPrice * usdDecimals;
+    //     pool[_poolId].lastSettledUsdPrice = _startPrice * usdDecimals;
+    //     pool[_poolId].currentUsdPrice = _endPrice * usdDecimals;
     //     uint hEthVal;
     //     uint cEthVal;
     //     (hEthVal, cEthVal) = interact();
@@ -486,32 +521,38 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     /// GET PROFIT /// - returns profit percentage in terms of basis points
-    function getProfit(uint256 _ethUsd) public view returns (int256) {
-        int256 profit = ((int(_ethUsd) - int(lastSettledEthUsd)) * int(bps)) /
-            int(lastSettledEthUsd);
+    function getProfit(uint _poolId, uint256 _currentUsdPrice)
+        public
+        view
+        returns (int256)
+    {
+        int256 profit = ((int(_currentUsdPrice) -
+            int(pool[_poolId].lastSettledUsdPrice)) * int(bps)) /
+            int(pool[_poolId].lastSettledUsdPrice);
         return profit;
     }
 
     /// TRANCHE SPECIFIC CALCS /// - calculates allocation difference for a tranche (also avoids 'stack too deep' error)
     function trancheSpecificCalcs(
+        uint _poolId,
         bool _isCooled,
-        int256 _ethUsdProfit,
-        uint256 _currentEthUsd
+        int256 _assetUsdProfit,
+        uint256 _currentAssetUsd
     ) private view returns (int256, int256) {
         // TEMP
         // require(
-        //     cEthBal > 0 || hEthBal > 0, // in Wei
+        //     pool[_poolId].cEthBal > 0 || pool[_poolId].hEthBal > 0, // in Wei
         //     "Protocol must have funds in order to settle."
         // );
         uint256 trancheBal;
         int256 r;
         // get tranche balance and basis points for expected return
         if (_isCooled == true) {
-            trancheBal = cEthBal; // in Wei
+            trancheBal = pool[_poolId].cEthBal; // in Wei
             // CHANGE to variable
             r = -50_0000000000; // basis points
         } else {
-            trancheBal = hEthBal; // in Wei
+            trancheBal = pool[_poolId].hEthBal; // in Wei
             // CHANGE to variable
             r = 50_0000000000; // basis points
         }
@@ -522,8 +563,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             r == -50_0000000000 || r == 50_0000000000,
             "Tranche must have a valid multiplier value."
         );
-        int256 trancheChange = (int(trancheBal) * int(_currentEthUsd)) -
-            (int(trancheBal) * int(lastSettledEthUsd));
+        int256 trancheChange = (int(trancheBal) * int(_currentAssetUsd)) -
+            (int(trancheBal) * int(pool[_poolId].lastSettledUsdPrice));
         // CHANGE to variable
         int256 expectedPayout = (trancheChange * ((1 * int(bps)) + r)) /
             int(bps);
@@ -533,19 +574,32 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     /// INTERACT /// - rebalances the cooled and heated tranches
-    function interact() private returns (uint, uint) {
-        uint256 currentEthUsd = retrieveCurrentEthUsd();
-        ethUsd = currentEthUsd;
-        int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points
+    function interact(uint _poolId) private {
+        uint256 currentAssetUsd = retrieveCurrentUsdPrice(_poolId);
+        pool[_poolId].currentUsdPrice = currentAssetUsd;
+        int256 assetUsdProfit = getProfit(_poolId, currentAssetUsd); // returns ETH/USD profit in terms of basis points
         // find expected return and use it to calculate allocation difference for each tranche
         (
             int256 cooledAllocationDiff,
             int256 cooledChange
-        ) = trancheSpecificCalcs(true, ethUsdProfit, currentEthUsd);
+        ) = trancheSpecificCalcs(
+                _poolId,
+                true,
+                assetUsdProfit,
+                currentAssetUsd
+            );
         (
             int256 heatedAllocationDiff,
             int256 heatedChange
-        ) = trancheSpecificCalcs(false, ethUsdProfit, currentEthUsd);
+        ) = trancheSpecificCalcs(
+                _poolId,
+                false,
+                assetUsdProfit,
+                currentAssetUsd
+            );
+        // CHECK moved this, make sure it still works
+        uint256 percentCooledTranche = ((pool[_poolId].cEthBal * bps) /
+            (pool[_poolId].cEthBal + pool[_poolId].hEthBal));
         // use allocation differences to figure the absolute allocation total
         uint256 absAllocationTotal;
         {
@@ -558,9 +612,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 : absCooledAllocationDiff;
             int256 nonNaturalDifference = heatedAllocationDiff +
                 cooledAllocationDiff;
-            uint256 percentCooledTranche = ((cEthBal * bps) /
-                (cEthBal + hEthBal));
-            uint256 nonNaturalMultiplier = ethUsdProfit > 0
+            uint256 nonNaturalMultiplier = assetUsdProfit > 0
                 ? percentCooledTranche
                 : ((1 * bps) - percentCooledTranche);
             uint256 adjNonNaturalDiff = (uint(abs(nonNaturalDifference)) *
@@ -569,54 +621,58 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
         // calculate the actual allocation for the cooled tranche
         int256 cooledAllocation;
-        int256 heatedAllocation;
         if (cooledAllocationDiff < 0) {
             if (
                 // the cEthBal USD value - absAllocation (in usdDecimals)
-                int((cEthBal * currentEthUsd) / decimals) -
+                int((pool[_poolId].cEthBal * currentAssetUsd) / decimals) -
                     int(absAllocationTotal) >
                 0
             ) {
                 cooledAllocation = -int(absAllocationTotal);
             } else {
-                cooledAllocation = int((cEthBal * currentEthUsd) / decimals); // the cEthBal USD value (in UsDecimals * Decimals)
+                cooledAllocation = int(
+                    (pool[_poolId].cEthBal * currentAssetUsd) / decimals
+                ); // the cEthBal USD value (in UsDecimals * Decimals)
             }
         } else {
             if (
-                int((hEthBal * currentEthUsd) / decimals) -
+                int((pool[_poolId].hEthBal * currentAssetUsd) / decimals) -
                     int(absAllocationTotal) >
                 0
             ) {
                 cooledAllocation = int(absAllocationTotal); // absolute allocation in UsDecimals
             } else {
-                cooledAllocation = int((hEthBal * currentEthUsd) / decimals);
+                cooledAllocation = int(
+                    (pool[_poolId].hEthBal * currentAssetUsd) / decimals
+                );
             }
         }
+        // needed variables: currentAssetUsd, cooledChange, cooledAllocation
         // heated allocation is the inverse of the cooled allocation
-        heatedAllocation = -cooledAllocation; // USD allocation in usdDecimal terms
-        uint256 totalLockedUsd = ((cEthBal + hEthBal) * currentEthUsd) / // USD balance of protocol in usdDecimal terms
-            decimals;
-        int256 cooledBalAfterAllocation = ((int(cEthBal * lastSettledEthUsd) +
-            cooledChange) / int(decimals)) + cooledAllocation;
-        int256 heatedBalAfterAllocation = int(totalLockedUsd) - // heated USD balance in usdDecimal terms
-            cooledBalAfterAllocation;
-        (hEthBal, cEthBal) = reallocate( // reallocate the protocol ETH according to price movement
-            currentEthUsd,
-            cooledBalAfterAllocation,
-            heatedBalAfterAllocation
-        );
-        return (hEthBal, cEthBal);
+
+        reallocate(_poolId, currentAssetUsd, cooledChange, cooledAllocation); // reallocate the protocol ETH according to price movement
     }
 
     /// REALLOCATE /// - uses the USD values to calculate ETH balances of tranches
     function reallocate(
-        uint256 _currentEthUsd, // in usdDecimal form
-        int256 _cUsdBal, // in usdDecimal form
-        int256 _hUsdBal // in usdDecimal form
-    ) private view returns (uint, uint) {
-        uint cEthBalNew = (uint(_cUsdBal) * decimals) / _currentEthUsd; // new cEth Balance in Wei
-        uint hEthBalNew = (uint(_hUsdBal) * decimals) / _currentEthUsd; // new hEth Balance in Wei
-        return (hEthBalNew, cEthBalNew);
+        uint _poolId,
+        uint256 _currentAssetUsd, // in usdDecimal form
+        int _cooledChange,
+        int _cooledAllocation
+    ) private {
+        uint256 totalLockedUsd = ((pool[_poolId].cEthBal +
+            pool[_poolId].hEthBal) * _currentAssetUsd) / decimals; // USD balance of protocol in usdDecimal terms
+        int256 cooledBalAfterAllocation = ((int(
+            pool[_poolId].cEthBal * pool[_poolId].lastSettledUsdPrice
+        ) + _cooledChange) / int(decimals)) + _cooledAllocation;
+        int256 heatedBalAfterAllocation = int(totalLockedUsd) - // heated USD balance in usdDecimal terms
+            cooledBalAfterAllocation;
+        pool[_poolId].cEthBal =
+            (uint(cooledBalAfterAllocation) * decimals) /
+            _currentAssetUsd; // new cEth Balance in Wei
+        pool[_poolId].hEthBal =
+            (uint(heatedBalAfterAllocation) * decimals) /
+            _currentAssetUsd; // new hEth Balance in Wei
     }
 
     /// ABSOLUTE-VALUE /// - returns the absolute value of an int
@@ -624,117 +680,122 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return x >= 0 ? x : -x;
     }
 
-    /// SIMULATE INTERACT /// - view only of simulated rebalance of the cooled and heated tranches
-    function simulateInteract(uint _ethUsd) public view returns (uint, uint) {
-        uint256 currentEthUsd = _ethUsd;
-        int256 ethUsdProfit = getProfit(currentEthUsd); // returns ETH/USD profit in terms of basis points // 1000
-        // find expected return and use it to calculate allocation difference for each tranche
-        (
-            int256 cooledAllocationDiff,
-            int256 cooledChange
-        ) = trancheSpecificCalcs(true, ethUsdProfit, currentEthUsd);
-        // return cooledAllocationDiff;
-        (
-            int256 heatedAllocationDiff,
-            int256 heatedChange
-        ) = trancheSpecificCalcs(false, ethUsdProfit, currentEthUsd);
-        // return heatedAllocationDiff;
-        // use allocation differences to figure the absolute allocation total
-        uint256 absAllocationTotal;
-        {
-            // scope to avoid 'stack too deep' error
-            int256 absHeatedAllocationDiff = abs(heatedAllocationDiff);
-            int256 absCooledAllocationDiff = abs(cooledAllocationDiff);
-            int256 minAbsAllocation = absCooledAllocationDiff >
-                absHeatedAllocationDiff
-                ? absHeatedAllocationDiff
-                : absCooledAllocationDiff;
-            int256 nonNaturalDifference = heatedAllocationDiff +
-                cooledAllocationDiff;
-            uint256 percentCooledTranche = ((cEthBal * bps) /
-                (cEthBal + hEthBal));
-            uint256 nonNaturalMultiplier = ethUsdProfit > 0
-                ? percentCooledTranche
-                : ((1 * bps) - percentCooledTranche);
-            uint256 adjNonNaturalDiff = (uint(abs(nonNaturalDifference)) *
-                nonNaturalMultiplier) / bps;
-            absAllocationTotal = uint(minAbsAllocation) + adjNonNaturalDiff;
-        }
-        // calculate the actual allocation for the cooled tranche
-        int256 cooledAllocation;
-        int256 heatedAllocation;
-        if (cooledAllocationDiff < 0) {
-            if (
-                // the cEthBal USD value - absAllocation (in usdDecimals)
-                int((cEthBal * currentEthUsd) / decimals) -
-                    int(absAllocationTotal) >
-                0
-            ) {
-                cooledAllocation = -int(absAllocationTotal);
-            } else {
-                cooledAllocation = int((cEthBal * currentEthUsd) / decimals); // the cEthBal USD value (in UsDecimals * Decimals)
-            }
-        } else {
-            if (
-                int((hEthBal * currentEthUsd) / decimals) -
-                    int(absAllocationTotal) >
-                0
-            ) {
-                cooledAllocation = int(absAllocationTotal); // absolute allocation in UsDecimals
-            } else {
-                cooledAllocation = int((hEthBal * currentEthUsd) / decimals);
-            }
-        }
-        // heated allocation is the inverse of the cooled allocation
-        heatedAllocation = -cooledAllocation; // USD allocation in usdDecimal terms
-        uint256 totalLockedUsd = ((cEthBal + hEthBal) * currentEthUsd) / // USD balance of protocol in usdDecimal terms
-            decimals;
-        int256 cooledBalAfterAllocation = ((int(cEthBal * lastSettledEthUsd) +
-            cooledChange) / int(decimals)) + cooledAllocation;
-        int256 heatedBalAfterAllocation = int(totalLockedUsd) - // heated USD balance in usdDecimal terms
-            cooledBalAfterAllocation;
-        uint hEthBalSim;
-        uint cEthBalSim;
-        (hEthBalSim, cEthBalSim) = reallocate( // reallocate the protocol ETH according to price movement
-            currentEthUsd,
-            cooledBalAfterAllocation,
-            heatedBalAfterAllocation
-        );
-        return (hEthBalSim, cEthBalSim);
-    }
+    // /// SIMULATE INTERACT /// - view only of simulated rebalance of the cooled and heated tranches
+    // function simulateInteract(uint data) public view returns (uint, uint) {
+    //     uint poolId = data / decimals; // storing multiple values in a uint
+    //     uint simUsdPrice = data - poolId * decimals; // storing multiple values in a uint
+    //     int256 assetUsdProfit = getProfit(poolId, simUsdPrice); // returns ETH/USD profit in terms of basis points
+    //     // find expected return and use it to calculate allocation difference for each tranche
+    //     (
+    //         int256 cooledAllocationDiff,
+    //         int256 cooledChange
+    //     ) = trancheSpecificCalcs(poolId, true, assetUsdProfit, simUsdPrice);
+    //     (
+    //         int256 heatedAllocationDiff,
+    //         int256 heatedChange
+    //     ) = trancheSpecificCalcs(poolId, false, assetUsdProfit, simUsdPrice);
+    //     // CHECK moved this, make sure it still works
+    //     uint256 percentCooledTranche = ((pool[poolId].cEthBal * bps) /
+    //         (pool[poolId].cEthBal + pool[poolId].hEthBal));
+    //     // use allocation differences to figure the absolute allocation total
+    //     uint256 absAllocationTotal;
+    //     int256 cooledAllocation;
+    //     {
+    //         // scope to avoid 'stack too deep' error
+    //         int256 minAbsAllocation = abs(cooledAllocationDiff) >
+    //             abs(heatedAllocationDiff)
+    //             ? abs(heatedAllocationDiff)
+    //             : abs(cooledAllocationDiff);
+    //         int256 nonNaturalDifference = heatedAllocationDiff +
+    //             cooledAllocationDiff;
 
-    function getRangeOfReturns(
-        address _address,
-        bool _isCooled,
-        bool _isHeated,
-        bool _isAll
-    ) public view returns (int[] memory) {
-        uint ethUsdPrice = retrieveCurrentEthUsd();
-        int currentPercent = -50_0000000000;
-        int ethUsdAtIndex;
-        int[] memory estBals = new int[](11);
-        for (uint index = 0; index < 11; index++) {
-            ethUsdAtIndex =
-                (int(ethUsdPrice) * (int(bps) + currentPercent)) /
-                int(bps);
-            uint hBalEst;
-            uint cBalEst;
-            (hBalEst, cBalEst) = simulateInteract(uint(ethUsdAtIndex));
-            uint balanceRequested;
-            if (_isHeated == true || _isAll == true) {
-                balanceRequested =
-                    (hBalEst * ethStakedBalance[_address].hPercent) /
-                    bps;
-            }
-            if (_isCooled == true || _isAll == true) {
-                balanceRequested +=
-                    (cBalEst * ethStakedBalance[_address].cPercent) /
-                    bps;
-            }
-            estBals[index] = int(balanceRequested);
-            currentPercent += 10_0000000000;
-        }
+    //         uint256 nonNaturalMultiplier = assetUsdProfit > 0
+    //             ? percentCooledTranche
+    //             : ((1 * bps) - percentCooledTranche);
+    //         uint256 adjNonNaturalDiff = (uint(abs(nonNaturalDifference)) *
+    //             nonNaturalMultiplier) / bps;
+    //         absAllocationTotal = uint(minAbsAllocation) + adjNonNaturalDiff;
+    //     }
+    //     // calculate the actual allocation for the cooled tranche
 
-        return (estBals);
-    }
+    //     if (cooledAllocationDiff < 0) {
+    //         if (
+    //             // the cEthBal USD value - absAllocation (in usdDecimals)
+    //             int((pool[poolId].cEthBal * simUsdPrice) / decimals) -
+    //                 int(absAllocationTotal) >
+    //             0
+    //         ) {
+    //             cooledAllocation = -int(absAllocationTotal);
+    //         } else {
+    //             cooledAllocation = int(
+    //                 (pool[poolId].cEthBal * simUsdPrice) / decimals
+    //             ); // the cEthBal USD value (in UsDecimals * Decimals)
+    //         }
+    //     } else {
+    //         if (
+    //             int((pool[poolId].hEthBal * simUsdPrice) / decimals) -
+    //                 int(absAllocationTotal) >
+    //             0
+    //         ) {
+    //             cooledAllocation = int(absAllocationTotal); // absolute allocation in UsDecimals
+    //         } else {
+    //             cooledAllocation = int(
+    //                 (pool[poolId].hEthBal * simUsdPrice) / decimals
+    //             );
+    //         }
+    //     }
+    //     uint256 totalLockedUsd = ((pool[poolId].cEthBal +
+    //         pool[poolId].hEthBal) * simUsdPrice) / decimals; // USD balance of protocol in usdDecimal terms
+    //     int256 cooledBalAfterAllocation = ((int(
+    //         pool[poolId].cEthBal * pool[poolId].lastSettledUsdPrice
+    //     ) + cooledChange) / int(decimals)) + cooledAllocation;
+    //     // heated allocation is the inverse of the cooled allocation
+    //     int256 heatedBalAfterAllocation = int(totalLockedUsd) - // heated USD balance in usdDecimal terms
+    //         cooledBalAfterAllocation;
+    //     uint hEthBalSim;
+    //     uint cEthBalSim;
+    //     (hEthBalSim, cEthBalSim) = reallocate( // reallocate the protocol ETH according to price movement
+    //         simUsdPrice,
+    //         cooledBalAfterAllocation,
+    //         heatedBalAfterAllocation
+    //     );
+    //     return (hEthBalSim, cEthBalSim);
+    // }
+
+    // function getRangeOfReturns(
+    //     uint _poolId,
+    //     address _address,
+    //     bool _isCooled,
+    //     bool _isHeated,
+    //     bool _isAll
+    // ) public view returns (int[] memory) {
+    //     uint assetUsdPrice = retrieveCurrentUsdPrice(_poolId);
+    //     int currentPercent = -50_0000000000;
+    //     int assetUsdAtIndex;
+    //     int[] memory estBals = new int[](11);
+    //     for (uint index = 0; index < 11; index++) {
+    //         assetUsdAtIndex =
+    //             (int(assetUsdPrice) * (int(bps) + currentPercent)) /
+    //             int(bps);
+    //         uint hBalEst;
+    //         uint cBalEst;
+    //         uint data = (_poolId * decimals) + assetUsdPrice; // storing multiple values in a uint
+    //         (hBalEst, cBalEst) = simulateInteract(data);
+    //         uint balanceRequested;
+    //         if (_isHeated == true || _isAll == true) {
+    //             balanceRequested =
+    //                 (hBalEst * ethStakedBalance[_poolId][_address].hPercent) /
+    //                 bps;
+    //         }
+    //         if (_isCooled == true || _isAll == true) {
+    //             balanceRequested +=
+    //                 (cBalEst * ethStakedBalance[_poolId][_address].cPercent) /
+    //                 bps;
+    //         }
+    //         estBals[index] = int(balanceRequested);
+    //         currentPercent += 10_0000000000;
+    //     }
+
+    //     return (estBals);
+    // }
 }
