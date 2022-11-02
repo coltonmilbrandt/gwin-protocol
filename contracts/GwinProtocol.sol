@@ -50,8 +50,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     uint newPoolId = 0;
 
     struct Pool {
-        uint256 lastSettledUsdPrice; // change to last settled price
-        uint256 currentUsdPrice; // change to current price
+        uint256 lastSettledUsdPrice;
+        uint256 currentUsdPrice;
         // add price feed address, may need extra work to get from commodities to USD to ETH
         uint256 hEthBal;
         uint256 cEthBal;
@@ -146,19 +146,20 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         pool[_poolId].lastSettledUsdPrice = pool[_poolId].currentUsdPrice;
     }
 
-    // /// PREVIEW-USER-BALANCE /// - preview balance at the current ETH/USD price
-    // function previewUserBalance() public view returns (uint, uint) {
-    //     uint heatedBalance;
-    //     uint cooledBalance;
-    //     (heatedBalance, cooledBalance) = simulateInteract(
-    //         retrieveCurrentUsdPrice(_poolId)
-    //     );
-    //     uint userHeatedBalance = (heatedBalance *
-    //         ethStakedBalance[_poolId][msg.sender].hPercent) / bps;
-    //     uint userCooledBalance = (cooledBalance *
-    //         ethStakedBalance[_poolId][msg.sender].cPercent) / bps;
-    //     return (userHeatedBalance, userCooledBalance);
-    // }
+    /// PREVIEW-USER-BALANCE /// - preview balance at the current ETH/USD price
+    function previewUserBalance(uint _poolId) public view returns (uint, uint) {
+        uint heatedBalance;
+        uint cooledBalance;
+        (heatedBalance, cooledBalance) = simulateInteract(
+            _poolId,
+            retrieveCurrentUsdPrice(_poolId)
+        );
+        uint userHeatedBalance = (heatedBalance *
+            ethStakedBalance[_poolId][msg.sender].hPercent) / bps;
+        uint userCooledBalance = (cooledBalance *
+            ethStakedBalance[_poolId][msg.sender].cPercent) / bps;
+        return (userHeatedBalance, userCooledBalance);
+    }
 
     /// WITHDRAW /// - used to withdraw from cooled or heated tranche, or both
     function withdrawFromTranche(
@@ -232,6 +233,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     /// REMOVE-FROM-ARRAY /// - removes the staker from the array of ETH stakers
+    // #indexRemovalProblem
     function removeFromArray(uint _poolId, uint index) private {
         ethStakers[_poolId][index] = ethStakers[_poolId][
             ethStakers[_poolId].length - 1
@@ -249,7 +251,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         if (_beforeTx == true) {
             // BEFORE deposit, only balances are affected based on percentages
             liquidateIfZero(_poolId);
-            // ISSUE stakers need removed if they get liquidated (as of now, only one is removed)
             // ISSUE this could likely be optimized to avoid performing the for loops twice when liquidated
             for (
                 uint256 ethStakersIndex = 0;
@@ -269,7 +270,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         } else {
             // AFTER tx, only affected tranche percentages change
             uint indexToRemove; // to track index of user in ethStakers array if account emptied
-            bool indexNeedsRemoved; // to differentiate indexToRemove == 0 from default ethStakers[0]
+            bool indexNeedsRemoved = false; // to differentiate indexToRemove == 0 from default ethStakers[0]
             if (_isCooled == true && _isHeated == false) {
                 // only Cooled tranche percentage numbers are affected by cooled tx
                 for (
@@ -282,13 +283,14 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                         (ethStakedBalance[_poolId][addrC].cBal * bps) /
                         pool[_poolId].cEthBal;
                     // Flags index and stores for removal AFTER calculations are finished
-                    if (
-                        ethStakedBalance[_poolId][addrC].cBal <= 0 &&
-                        ethStakedBalance[_poolId][addrC].hBal <= 0
-                    ) {
-                        indexNeedsRemoved = true;
-                        indexToRemove = ethStakersIndex;
-                    }
+                    // #indexRemovalProblem
+                    // if (
+                    //     ethStakedBalance[_poolId][addrC].cBal <= 0 &&
+                    //     ethStakedBalance[_poolId][addrC].hBal <= 0
+                    // ) {
+                    //     indexNeedsRemoved = true;
+                    //     indexToRemove = ethStakersIndex;
+                    // }
                 }
             } else if (_isCooled == false && _isHeated == true) {
                 // only Heated tranche percentage numbers are affected by heated tx
@@ -301,14 +303,15 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     ethStakedBalance[_poolId][addrC].hPercent =
                         (ethStakedBalance[_poolId][addrC].hBal * bps) /
                         pool[_poolId].hEthBal;
+                    // #indexRemovalProblem
                     // Flags index and stores for removal AFTER calculations are finished
-                    if (
-                        ethStakedBalance[_poolId][addrC].cBal <= 0 &&
-                        ethStakedBalance[_poolId][addrC].hBal <= 0
-                    ) {
-                        indexNeedsRemoved = true;
-                        indexToRemove = ethStakersIndex;
-                    }
+                    // if (
+                    //     ethStakedBalance[_poolId][addrC].cBal <= 0 &&
+                    //     ethStakedBalance[_poolId][addrC].hBal <= 0
+                    // ) {
+                    //     indexNeedsRemoved = true;
+                    //     indexToRemove = ethStakersIndex;
+                    // }
                 }
             } else {
                 // Cooled and Heated tranche percentage numbers are affected by tx
@@ -324,20 +327,22 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     ethStakedBalance[_poolId][addrC].hPercent =
                         (ethStakedBalance[_poolId][addrC].hBal * bps) /
                         pool[_poolId].hEthBal;
+                    // #indexRemovalProblem
                     // Flags index and stores for removal AFTER calculations are finished
-                    if (
-                        ethStakedBalance[_poolId][addrC].cBal <= 0 &&
-                        ethStakedBalance[_poolId][addrC].hBal <= 0
-                    ) {
-                        indexNeedsRemoved = true;
-                        indexToRemove = ethStakersIndex;
-                    }
+                    // if (
+                    //     ethStakedBalance[_poolId][addrC].cBal <= 0 &&
+                    //     ethStakedBalance[_poolId][addrC].hBal <= 0
+                    // ) {
+                    //     indexNeedsRemoved = true;
+                    //     indexToRemove = ethStakersIndex;
+                    // }
                 }
             }
             // Remove user if balances are empty, done after calculation so array indexes are not disrupted
-            if (indexNeedsRemoved == true) {
-                removeFromArray(_poolId, indexToRemove);
-            }
+            // #indexRemovalProblem
+            // if (indexNeedsRemoved == true) {
+            //     removeFromArray(_poolId, indexToRemove);
+            // }
         }
     }
 
@@ -782,40 +787,41 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (hEthSimBal, cEthSimBal);
     }
 
-    // function getRangeOfReturns(
-    //     uint _poolId,
-    //     address _address,
-    //     bool _isCooled,
-    //     bool _isHeated,
-    //     bool _isAll
-    // ) public view returns (int[] memory) {
-    //     uint assetUsdPrice = retrieveCurrentUsdPrice(_poolId);
-    //     int currentPercent = -50_0000000000;
-    //     int assetUsdAtIndex;
-    //     int[] memory estBals = new int[](11);
-    //     for (uint index = 0; index < 11; index++) {
-    //         assetUsdAtIndex =
-    //             (int(assetUsdPrice) * (int(bps) + currentPercent)) /
-    //             int(bps);
-    //         uint hBalEst;
-    //         uint cBalEst;
-    //         uint data = (_poolId * decimals) + assetUsdPrice; // storing multiple values in a uint
-    //         (hBalEst, cBalEst) = simulateInteract(data);
-    //         uint balanceRequested;
-    //         if (_isHeated == true || _isAll == true) {
-    //             balanceRequested =
-    //                 (hBalEst * ethStakedBalance[_poolId][_address].hPercent) /
-    //                 bps;
-    //         }
-    //         if (_isCooled == true || _isAll == true) {
-    //             balanceRequested +=
-    //                 (cBalEst * ethStakedBalance[_poolId][_address].cPercent) /
-    //                 bps;
-    //         }
-    //         estBals[index] = int(balanceRequested);
-    //         currentPercent += 10_0000000000;
-    //     }
+    function getRangeOfReturns(
+        uint _poolId,
+        address _address,
+        bool _isCooled,
+        bool _isAll
+    ) public view returns (int[] memory) {
+        uint assetUsdPrice = retrieveCurrentUsdPrice(_poolId);
+        int currentPercent = -50_0000000000;
+        int assetUsdAtIndex;
+        int[] memory estBals = new int[](11);
+        for (uint index = 0; index < 11; index++) {
+            assetUsdAtIndex =
+                (int(assetUsdPrice) * (int(bps) + currentPercent)) /
+                int(bps);
+            uint hBalEst;
+            uint cBalEst;
+            (hBalEst, cBalEst) = simulateInteract(
+                _poolId,
+                uint(assetUsdAtIndex)
+            );
+            uint balanceRequested;
+            if (_isCooled == false || _isAll == true) {
+                balanceRequested =
+                    (hBalEst * ethStakedBalance[_poolId][_address].hPercent) /
+                    bps;
+            }
+            if (_isCooled == true || _isAll == true) {
+                balanceRequested +=
+                    (cBalEst * ethStakedBalance[_poolId][_address].cPercent) /
+                    bps;
+            }
+            estBals[index] = int(balanceRequested);
+            currentPercent += 10_0000000000;
+        }
 
-    //     return (estBals);
-    // }
+        return (estBals);
+    }
 }
