@@ -55,8 +55,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         // add price feed address, may need extra work to get from commodities to USD to ETH
         uint256 hEthBal;
         uint256 cEthBal;
-        uint256 hRate;
-        uint256 cRate;
+        int256 hRate;
+        int256 cRate;
         uint8 poolType; // as in classic or modified
         // may need protocol state added
     }
@@ -80,19 +80,27 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ethUsdPriceFeed = AggregatorV3Interface(_priceFeedAddress);
     }
 
-    /// INITIALIZE-PROTOCOL /// - this deposits an equal amount to each tranche to initialize the protocol
-    function initializeProtocol(uint8 _type) external payable returns (uint) {
+    /// INITIALIZE-POOL /// - this deposits an equal amount to each tranche to initialize a pool
+    function initializePool(
+        uint8 _type,
+        int _cRate,
+        int _hRate
+    ) external payable onlyOwner returns (uint) {
         // ADD require that pool ID is not taken
+        // ADD require that cRate and hRate are appropriate and match uint8 _type
         poolIds.push(newPoolId);
         pool[newPoolId].poolType = _type;
         require(
             pool[newPoolId].cEthBal == 0 && pool[newPoolId].hEthBal == 0,
             "The Protocol already has funds deposited."
         );
+        require(_cRate < 0 && _hRate > 0, "Rates_Must_Oppose");
         if (isUniqueEthStaker[newPoolId][msg.sender] == false) {
             ethStakers[newPoolId].push(msg.sender);
             isUniqueEthStaker[newPoolId][msg.sender] = true;
         }
+        pool[newPoolId].cRate = _cRate;
+        pool[newPoolId].hRate = _hRate;
         uint splitAmount = msg.value / 2;
         ethStakedBalance[newPoolId][msg.sender].cBal += splitAmount;
         ethStakedBalance[newPoolId][msg.sender].cPercent = bps;
@@ -170,16 +178,13 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint _hAmount,
         bool _isAll
     ) external nonReentrant {
-        // TEMP ||
+        // TEMP || "or"
         require(
             pool[_poolId].cEthBal > 0 || pool[_poolId].hEthBal > 0,
-            "The Protocol needs initial funds deposited."
+            "Protocol_Funds_Insufficient"
         );
         if (_isAll == false) {
-            require(
-                _cAmount > 0 || _hAmount > 0,
-                "Amount must be greater than zero."
-            );
+            require(_cAmount > 0 || _hAmount > 0, "Zero_Withdrawal_Amount");
         }
         require(_isCooled == true || _isHeated == true);
 
@@ -200,7 +205,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         require(
             _cAmount <= ethStakedBalance[_poolId][msg.sender].cBal &&
                 _hAmount <= ethStakedBalance[_poolId][msg.sender].hBal,
-            "The amount to withdrawal is greater than the available balance."
+            "Insufficient_User_Funds"
         );
 
         // Withdraw ETH
@@ -555,19 +560,14 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         if (_isCooled == true) {
             trancheBal = pool[_poolId].cEthBal; // in Wei
             // CHANGE to variable
-            r = -50_0000000000; // basis points
+            r = pool[_poolId].cRate; // basis points
         } else {
             trancheBal = pool[_poolId].hEthBal; // in Wei
             // CHANGE to variable
-            r = 50_0000000000; // basis points
+            r = pool[_poolId].hRate; // basis points
         }
-        // TEMP
+        // TEMP?
         // require(trancheBal > 0, "Tranche must have a balance.");
-        require(
-            // CHANGE to variable
-            r == -50_0000000000 || r == 50_0000000000,
-            "Tranche must have a valid multiplier value."
-        );
         int256 trancheChange = (int(trancheBal) * int(_currentAssetUsd)) -
             (int(trancheBal) * int(pool[_poolId].lastSettledUsdPrice));
         // CHANGE to variable

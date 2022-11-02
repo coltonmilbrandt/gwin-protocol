@@ -16,7 +16,7 @@ def test_use_protocol():
     non_owner_four = get_account(index=4) # Dan
     gwin_protocol, gwin_ERC20, eth_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
     # Act
-    tx = gwin_protocol.initializeProtocol(0, {"from": account, "value": Web3.toWei(20, "ether")})
+    tx = gwin_protocol.initializePool(0, -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
     tx.wait(1)
     
     eth_usd, last_eth = gwin_protocol.retrieveProtocolEthPrice(0)
