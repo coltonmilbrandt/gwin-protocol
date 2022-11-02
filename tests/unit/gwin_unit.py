@@ -115,9 +115,9 @@ def test_deploy_mock_protocol_in_use():
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call(0, {"from": account})) == 8_8804772808 # cEth in protocol
     assert rounded(gwin_protocol.retrieveProtocolHEthBalance.call(0, {"from": account})) == 12_1507433794 # hEth in protocol
 
-    # valOne, valTwo = gwin_protocol.simulateInteract.call(1300_00000000)
-    # assert rounded(valTwo) == 8_8804772808
-    # assert rounded(valOne) == 12_1507433794
+    valOne, valTwo = gwin_protocol.simulateInteract.call(0, 1300_00000000, {"from": account})
+    assert rounded(valTwo) == 8_8804772808
+    assert rounded(valOne) == 12_1507433794
 
     assert rounded(gwin_protocol.retrieveCEthBalance.call(0, account.address, {"from": account})) == 8_8804772808 # cEth for account 
     assert roundedDec(gwin_protocol.retrieveCEthPercentBalance.call(0, account.address, {"from": account})) == 100_0000000000 # cEth % for account

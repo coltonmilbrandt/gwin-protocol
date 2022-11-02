@@ -681,86 +681,106 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     // /// SIMULATE INTERACT /// - view only of simulated rebalance of the cooled and heated tranches
-    // function simulateInteract(uint data) public view returns (uint, uint) {
-    //     uint poolId = data / decimals; // storing multiple values in a uint
-    //     uint simUsdPrice = data - poolId * decimals; // storing multiple values in a uint
-    //     int256 assetUsdProfit = getProfit(poolId, simUsdPrice); // returns ETH/USD profit in terms of basis points
-    //     // find expected return and use it to calculate allocation difference for each tranche
-    //     (
-    //         int256 cooledAllocationDiff,
-    //         int256 cooledChange
-    //     ) = trancheSpecificCalcs(poolId, true, assetUsdProfit, simUsdPrice);
-    //     (
-    //         int256 heatedAllocationDiff,
-    //         int256 heatedChange
-    //     ) = trancheSpecificCalcs(poolId, false, assetUsdProfit, simUsdPrice);
-    //     // CHECK moved this, make sure it still works
-    //     uint256 percentCooledTranche = ((pool[poolId].cEthBal * bps) /
-    //         (pool[poolId].cEthBal + pool[poolId].hEthBal));
-    //     // use allocation differences to figure the absolute allocation total
-    //     uint256 absAllocationTotal;
-    //     int256 cooledAllocation;
-    //     {
-    //         // scope to avoid 'stack too deep' error
-    //         int256 minAbsAllocation = abs(cooledAllocationDiff) >
-    //             abs(heatedAllocationDiff)
-    //             ? abs(heatedAllocationDiff)
-    //             : abs(cooledAllocationDiff);
-    //         int256 nonNaturalDifference = heatedAllocationDiff +
-    //             cooledAllocationDiff;
+    function simulateInteract(uint _poolId, uint _simAssetUsd)
+        public
+        view
+        returns (uint, uint)
+    {
+        int256 assetUsdProfit = getProfit(_poolId, _simAssetUsd); // returns ETH/USD profit in terms of basis points
+        // find expected return and use it to calculate allocation difference for each tranche
+        (
+            int256 cooledAllocationDiff,
+            int256 cooledChange
+        ) = trancheSpecificCalcs(_poolId, true, assetUsdProfit, _simAssetUsd);
+        (
+            int256 heatedAllocationDiff,
+            int256 heatedChange
+        ) = trancheSpecificCalcs(_poolId, false, assetUsdProfit, _simAssetUsd);
+        // CHECK moved this, make sure it still works
+        uint256 percentCooledTranche = ((pool[_poolId].cEthBal * bps) /
+            (pool[_poolId].cEthBal + pool[_poolId].hEthBal));
+        // use allocation differences to figure the absolute allocation total
+        uint256 absAllocationTotal;
+        {
+            // scope to avoid 'stack too deep' error
+            int256 absHeatedAllocationDiff = abs(heatedAllocationDiff);
+            int256 absCooledAllocationDiff = abs(cooledAllocationDiff);
+            int256 minAbsAllocation = absCooledAllocationDiff >
+                absHeatedAllocationDiff
+                ? absHeatedAllocationDiff
+                : absCooledAllocationDiff;
+            int256 nonNaturalDifference = heatedAllocationDiff +
+                cooledAllocationDiff;
+            uint256 nonNaturalMultiplier = assetUsdProfit > 0
+                ? percentCooledTranche
+                : ((1 * bps) - percentCooledTranche);
+            uint256 adjNonNaturalDiff = (uint(abs(nonNaturalDifference)) *
+                nonNaturalMultiplier) / bps;
+            absAllocationTotal = uint(minAbsAllocation) + adjNonNaturalDiff;
+        }
 
-    //         uint256 nonNaturalMultiplier = assetUsdProfit > 0
-    //             ? percentCooledTranche
-    //             : ((1 * bps) - percentCooledTranche);
-    //         uint256 adjNonNaturalDiff = (uint(abs(nonNaturalDifference)) *
-    //             nonNaturalMultiplier) / bps;
-    //         absAllocationTotal = uint(minAbsAllocation) + adjNonNaturalDiff;
-    //     }
-    //     // calculate the actual allocation for the cooled tranche
+        // needed variables: _simAssetUsd, cooledChange, cooledAllocation
+        // heated allocation is the inverse of the cooled allocation
 
-    //     if (cooledAllocationDiff < 0) {
-    //         if (
-    //             // the cEthBal USD value - absAllocation (in usdDecimals)
-    //             int((pool[poolId].cEthBal * simUsdPrice) / decimals) -
-    //                 int(absAllocationTotal) >
-    //             0
-    //         ) {
-    //             cooledAllocation = -int(absAllocationTotal);
-    //         } else {
-    //             cooledAllocation = int(
-    //                 (pool[poolId].cEthBal * simUsdPrice) / decimals
-    //             ); // the cEthBal USD value (in UsDecimals * Decimals)
-    //         }
-    //     } else {
-    //         if (
-    //             int((pool[poolId].hEthBal * simUsdPrice) / decimals) -
-    //                 int(absAllocationTotal) >
-    //             0
-    //         ) {
-    //             cooledAllocation = int(absAllocationTotal); // absolute allocation in UsDecimals
-    //         } else {
-    //             cooledAllocation = int(
-    //                 (pool[poolId].hEthBal * simUsdPrice) / decimals
-    //             );
-    //         }
-    //     }
-    //     uint256 totalLockedUsd = ((pool[poolId].cEthBal +
-    //         pool[poolId].hEthBal) * simUsdPrice) / decimals; // USD balance of protocol in usdDecimal terms
-    //     int256 cooledBalAfterAllocation = ((int(
-    //         pool[poolId].cEthBal * pool[poolId].lastSettledUsdPrice
-    //     ) + cooledChange) / int(decimals)) + cooledAllocation;
-    //     // heated allocation is the inverse of the cooled allocation
-    //     int256 heatedBalAfterAllocation = int(totalLockedUsd) - // heated USD balance in usdDecimal terms
-    //         cooledBalAfterAllocation;
-    //     uint hEthBalSim;
-    //     uint cEthBalSim;
-    //     (hEthBalSim, cEthBalSim) = reallocate( // reallocate the protocol ETH according to price movement
-    //         simUsdPrice,
-    //         cooledBalAfterAllocation,
-    //         heatedBalAfterAllocation
-    //     );
-    //     return (hEthBalSim, cEthBalSim);
-    // }
+        return
+            simulateReallocate(
+                _poolId,
+                _simAssetUsd,
+                cooledChange,
+                cooledAllocationDiff,
+                absAllocationTotal
+            ); // reallocate the protocol ETH according to price movement
+    }
+
+    /// REALLOCATE /// - uses the USD values to calculate ETH balances of tranches
+    function simulateReallocate(
+        uint _poolId,
+        uint256 _simAssetUsd, // in usdDecimal form
+        int _cooledChange,
+        int _cooledAllocationDiff,
+        uint _absAllocationTotal
+    ) private view returns (uint, uint) {
+        // calculate the actual allocation for the cooled tranche
+        int256 cooledAllocation;
+        if (_cooledAllocationDiff < 0) {
+            if (
+                // the cEthBal USD value - absAllocation (in usdDecimals)
+                int((pool[_poolId].cEthBal * _simAssetUsd) / decimals) -
+                    int(_absAllocationTotal) >
+                0
+            ) {
+                cooledAllocation = -int(_absAllocationTotal);
+            } else {
+                cooledAllocation = int(
+                    (pool[_poolId].cEthBal * _simAssetUsd) / decimals
+                ); // the cEthBal USD value (in UsDecimals * Decimals)
+            }
+        } else {
+            if (
+                int((pool[_poolId].hEthBal * _simAssetUsd) / decimals) -
+                    int(_absAllocationTotal) >
+                0
+            ) {
+                cooledAllocation = int(_absAllocationTotal); // absolute allocation in UsDecimals
+            } else {
+                cooledAllocation = int(
+                    (pool[_poolId].hEthBal * _simAssetUsd) / decimals
+                );
+            }
+        }
+        uint256 totalLockedUsd = ((pool[_poolId].cEthBal +
+            pool[_poolId].hEthBal) * _simAssetUsd) / decimals; // USD balance of protocol in usdDecimal terms
+        int256 cooledBalAfterAllocation = ((int(
+            pool[_poolId].cEthBal * pool[_poolId].lastSettledUsdPrice
+        ) + _cooledChange) / int(decimals)) + cooledAllocation;
+        int256 heatedBalAfterAllocation = int(totalLockedUsd) - // heated USD balance in usdDecimal terms
+            cooledBalAfterAllocation;
+        uint cEthSimBal = (uint(cooledBalAfterAllocation) * decimals) /
+            _simAssetUsd; // new cEth Balance in Wei
+        uint hEthSimBal = (uint(heatedBalAfterAllocation) * decimals) /
+            _simAssetUsd; // new hEth Balance in Wei
+        return (hEthSimBal, cEthSimBal);
+    }
 
     // function getRangeOfReturns(
     //     uint _poolId,
