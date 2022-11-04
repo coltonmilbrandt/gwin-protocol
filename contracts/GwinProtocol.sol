@@ -39,8 +39,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     // array of pool IDs
     uint[] public poolIds;
 
-    AggregatorV3Interface internal ethUsdPriceFeed;
-
     // ********* Decimal Values *********
     uint256 decimals = 10**18;
     uint256 usdDecimals = 10**8;
@@ -52,7 +50,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     struct Pool {
         uint256 lastSettledUsdPrice;
         uint256 currentUsdPrice;
-        // add price feed address, may need extra work to get from commodities to USD to ETH
+        address priceFeedAddress;
         uint256 hEthBal;
         uint256 cEthBal;
         int256 hRate;
@@ -70,19 +68,15 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     IERC20 public gwinToken;
 
     // Right when we deploy this contract, we need to know the address of GWIN token
-    constructor(
-        address _gwinTokenAddress,
-        address _priceFeedAddress,
-        address _link
-    ) public {
+    constructor(address _gwinTokenAddress, address _link) public {
         // pass in the address from the GwinToken.sol contract
         gwinToken = IERC20(_gwinTokenAddress);
-        ethUsdPriceFeed = AggregatorV3Interface(_priceFeedAddress);
     }
 
     /// INITIALIZE-POOL /// - this deposits an equal amount to each tranche to initialize a pool
     function initializePool(
         uint8 _type,
+        address _priceFeedAddress,
         int _cRate,
         int _hRate
     ) external payable onlyOwner returns (uint) {
@@ -101,6 +95,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
         pool[newPoolId].cRate = _cRate;
         pool[newPoolId].hRate = _hRate;
+        pool[newPoolId].priceFeedAddress = _priceFeedAddress;
         uint splitAmount = msg.value / 2;
         ethStakedBalance[newPoolId][msg.sender].cBal += splitAmount;
         ethStakedBalance[newPoolId][msg.sender].cPercent = bps;
@@ -108,11 +103,19 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ethStakedBalance[newPoolId][msg.sender].hBal += splitAmount;
         ethStakedBalance[newPoolId][msg.sender].hPercent = bps;
         pool[newPoolId].hEthBal = splitAmount;
-        pool[newPoolId].currentUsdPrice = retrieveCurrentUsdPrice(newPoolId);
+        // pool[newPoolId].currentUsdPrice = retrieveCurrentPrice(newPoolId);
         pool[newPoolId].lastSettledUsdPrice = pool[newPoolId].currentUsdPrice;
         newPoolId++;
         return newPoolId - 1;
     }
+
+    // function setPriceFeedContract(uint _poolId, address _priceFeed)
+    //     public
+    //     onlyOwner
+    // {
+    //     // sets the mapping for the token to its corresponding price feed contract
+    //     pool[_poolId].priceFeed = _priceFeed;
+    // }
 
     /// DEPOSIT /// - used to deposit to cooled or heated tranche, or both
     function depositToTranche(
@@ -160,7 +163,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint cooledBalance;
         (heatedBalance, cooledBalance) = simulateInteract(
             _poolId,
-            retrieveCurrentUsdPrice(_poolId)
+            retrieveCurrentPrice(_poolId)
         );
         uint userHeatedBalance = (heatedBalance *
             ethStakedBalance[_poolId][msg.sender].hPercent) / bps;
@@ -374,9 +377,24 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
     /// VIEW-BALANCE-FUNCTIONS /// - check balances
 
-    function retrieveCurrentUsdPrice(uint _poolId) public view returns (uint) {
-        (, int256 price, , , ) = ethUsdPriceFeed.latestRoundData();
-        return uint(price);
+    function retrieveCurrentPrice(uint _poolId) public view returns (uint) {
+        // pool's priceFeedAddress is fed into the AggregatorV3Interface
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(
+            pool[_poolId].priceFeedAddress
+        );
+        (
+            ,
+            /*uint80 roundID*/
+            int price, /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
+            ,
+            ,
+
+        ) = priceFeed.latestRoundData();
+        // set number of decimals for token value
+        uint256 decimals = priceFeed.decimals();
+        // return token price and decimals
+        // return (uint256(price), decimals);
+        return uint256(price);
     }
 
     function retrieveEthInContract() public view returns (uint) {
@@ -580,7 +598,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
     /// INTERACT /// - rebalances the cooled and heated tranches
     function interact(uint _poolId) private {
-        uint256 currentAssetUsd = retrieveCurrentUsdPrice(_poolId);
+        uint256 currentAssetUsd = retrieveCurrentPrice(_poolId);
         pool[_poolId].currentUsdPrice = currentAssetUsd;
         int256 assetUsdProfit = getProfit(_poolId, currentAssetUsd); // returns ETH/USD profit in terms of basis points
         // find expected return and use it to calculate allocation difference for each tranche
@@ -793,7 +811,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         bool _isCooled,
         bool _isAll
     ) public view returns (int[] memory) {
-        uint assetUsdPrice = retrieveCurrentUsdPrice(_poolId);
+        uint assetUsdPrice = retrieveCurrentPrice(_poolId);
         int currentPercent = -50_0000000000;
         int assetUsdAtIndex;
         int[] memory estBals = new int[](11);

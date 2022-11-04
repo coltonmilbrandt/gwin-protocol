@@ -29,6 +29,7 @@ BLOCK_CONFIRMATIONS_FOR_VERIFICATION = (
 contract_to_mock = {
     "link_token": LinkToken,
     "eth_usd_price_feed": MockV3Aggregator,
+    "xau_usd_price_feed": MockV3Aggregator,
     "oracle": MockOracle,
 }
 
@@ -183,21 +184,22 @@ def deploy_mock_protocol_in_use():
     account = get_account()
     gwin_ERC20 = GwinToken.deploy({"from": account})
     gwin_protocol = GwinProtocol.deploy(
-        gwin_ERC20.address, 
-        get_contract("eth_usd_price_feed").address, 
+        gwin_ERC20.address,  
         get_contract("link_token").address, 
         {"from": account}, 
         publish_source=config["networks"][network.show_active()]["verify"]
     )
     eth_usd_price_feed = get_contract("eth_usd_price_feed")
+    xau_usd_price_feed = get_contract("xau_usd_price_feed")
     eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account})
+    xau_usd_price_feed.updateAnswer(1600_00000000, {"from": account})
     tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
     tx.wait(1)
     non_owner = get_account(index=1) # Alice
     non_owner_two = get_account(index=2) # Bob
     non_owner_three = get_account(index=3) # Chris
     non_owner_four = get_account(index=4) # Dan
-    tx = gwin_protocol.initializePool(0, -50_0000000000, 50_0000000000, {"from": account, "value": web3.toWei(20, "ether")})
+    tx = gwin_protocol.initializePool(0, "0x0000000000000000000000000000000000000000", -50_0000000000, 50_0000000000, {"from": account, "value": web3.toWei(20, "ether")})
     tx.wait(1)
 
     ################### tx1 ###################

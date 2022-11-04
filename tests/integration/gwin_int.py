@@ -16,7 +16,7 @@ def test_use_protocol():
     non_owner_four = get_account(index=4) # Dan
     gwin_protocol, gwin_ERC20, eth_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
     # Act
-    tx = gwin_protocol.initializePool(0, -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+    tx = gwin_protocol.initializePool(0, "0x0000000000000000000000000000000000000000", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
     tx.wait(1)
     
     eth_usd, last_eth = gwin_protocol.retrieveProtocolEthPrice(0)
@@ -45,7 +45,7 @@ def test_use_protocol():
     # Act
     eth_usd_price_feed.updateAnswer(1200_00000000, {"from": account})
     # Assert
-    assert gwin_protocol.retrieveCurrentUsdPrice(0, {"from": account}) == 1200_00000000
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1200_00000000
     # Act
     ################### tx1 ###################
     #                                     isCooled, isHeated, cAmount, hAmount {from, msg.value}
@@ -74,7 +74,7 @@ def test_use_protocol():
     # Act
     eth_usd_price_feed.updateAnswer(1400_00000000, {"from": account})
     # Assert
-    assert gwin_protocol.retrieveCurrentUsdPrice(0, {"from": account}) == 1400_00000000
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1400_00000000
     # Act
     #              DEPOSIT              isCooled, isHeated, cAmount, hAmount {from, msg.value}
     txTwo = gwin_protocol.depositToTranche(0, False, True, 0, Web3.toWei(1, "ether"), {"from": non_owner_two, "value": Web3.toWei(1, "ether")})
@@ -107,7 +107,7 @@ def test_use_protocol():
     # Act
     eth_usd_price_feed.updateAnswer(1300_00000000, {"from": account})
     # Assert
-    assert gwin_protocol.retrieveCurrentUsdPrice(0, {"from": account}) == 1300_00000000
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1300_00000000
     # Act
     ################### tx3 ###################
     #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
@@ -141,7 +141,7 @@ def test_use_protocol():
     # Act
     eth_usd_price_feed.updateAnswer(1150_00000000, {"from": account})
     # Assert
-    assert gwin_protocol.retrieveCurrentUsdPrice(0, {"from": account}) == 1150_00000000
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1150_00000000
     # Act
     ################### tx4 ###################
     #              DEPOSIT              isCooled, isHeated, cAmount, hAmount {from, msg.value}
@@ -184,7 +184,7 @@ def test_use_protocol():
     # Act
     eth_usd_price_feed.updateAnswer(1100_00000000, {"from": account})
     # Assert
-    assert gwin_protocol.retrieveCurrentUsdPrice(0, {"from": account}) == 1100_00000000
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1100_00000000
     # Act
     ################### tx5 ###################
     #              DEPOSIT              isCooled, isHeated, cAmount, hAmount {from, msg.value}
@@ -231,7 +231,7 @@ def test_use_protocol():
     # Act
     eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account})
     # Assert
-    assert gwin_protocol.retrieveCurrentUsdPrice(0, {"from": account}) == 1000_00000000
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1000_00000000
     # Act
     ################### tx6 ###################
     #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
@@ -278,7 +278,7 @@ def test_use_protocol():
     # Act
     eth_usd_price_feed.updateAnswer(1300_00000000, {"from": account})
     # Assert
-    assert gwin_protocol.retrieveCurrentUsdPrice(0, {"from": account}) == 1300_00000000
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1300_00000000
     # Act
     ################### tx7 ###################
     #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
@@ -325,7 +325,7 @@ def test_use_protocol():
     # Act
     eth_usd_price_feed.updateAnswer(1400_00000000, {"from": account})
     # Assert
-    assert gwin_protocol.retrieveCurrentUsdPrice(0, {"from": account}) == 1400_00000000
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1400_00000000
     # Act
     ################### tx8 ###################         Dual Deposit Test
     #              DEPOSIT              isCooled, isHeated, cAmount, hAmount {from, msg.value}
@@ -379,7 +379,7 @@ def test_use_protocol():
     # Act
     eth_usd_price_feed.updateAnswer(1300_00000000, {"from": account})
     # Assert
-    assert gwin_protocol.retrieveCurrentUsdPrice(0, {"from": account}) == 1300_00000000
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1300_00000000
     # Act
     ################### tx9 ###################         Dual Partial Withdrawal Test
     #              DEPOSIT              isCooled, isHeated, cAmount, hAmount {from, msg.value}
@@ -432,7 +432,7 @@ def test_use_protocol():
     # Act
     eth_usd_price_feed.updateAnswer(1500_00000000, {"from": account})
     # Assert
-    assert gwin_protocol.retrieveCurrentUsdPrice(0, {"from": account}) == 1500_00000000
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1500_00000000
     # Act
     ################### tx10 ###################         Heated Partial Withdrawal Test
     #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
@@ -485,7 +485,7 @@ def test_use_protocol():
     # Act
     eth_usd_price_feed.updateAnswer(1300_00000000, {"from": account})
     # Assert
-    assert gwin_protocol.retrieveCurrentUsdPrice(0, {"from": account}) == 1300_00000000
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1300_00000000
     # Act
     ################### tx11 ###################         Heated Partial Withdrawal Test
     #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}

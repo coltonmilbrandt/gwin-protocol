@@ -15,18 +15,19 @@ def deploy_gwin_protocol_and_gwin_token():
     print('Gwin ERC20 is deployed.')
     print('Gwin Protocol is deploying...')
     gwin_protocol = GwinProtocol.deploy(
-        gwin_ERC20.address, 
-        get_contract("eth_usd_price_feed").address, 
-        get_contract("link_token").address, 
-        {"from": account}, 
+        gwin_ERC20.address,
+        get_contract("link_token").address,
+        {"from": account},
         publish_source=config["networks"][network.show_active()].get("verify", False),
     )
     print('Gwin Protocol is deployed!')
     # We could do get_contract().address possibly. The entire contract may not be necessary
     print('Getting eth_usd_price_feed...')
     eth_usd_price_feed = get_contract("eth_usd_price_feed")
+    xau_usd_price_feed = get_contract("xau_usd_price_feed")
     if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account})
+        xau_usd_price_feed.updateAnswer(1600_00000000, {"from": account})
     tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
     tx.wait(1)
     # adds the tokens we are allowing to be staked
