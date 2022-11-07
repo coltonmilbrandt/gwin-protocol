@@ -47,6 +47,8 @@ def test_initialize_protocol():
     assert gwin_protocol.retrieveHEthPercentBalance.call(0, account.address, {"from": account}) == 1000000000000 # hEth % for account
     assert gwin_protocol.retrieveCEthBalance.call(0, account.address, {"from": account}) == 10000000000000000000 # cEth for account
     assert gwin_protocol.retrieveHEthBalance.call(0, account.address, {"from": account}) == 10000000000000000000 # hEth for account
+    eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account}) # TEMP
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1000_00000000 # TEMP
 
 # Legacy math tests - Left here to archive situations that passed, since nothing has changed in the math since passing.
 # NOTE: delete this if the math is adjusted
