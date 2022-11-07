@@ -64,7 +64,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         int256 hRate;
         int256 cRate;
         uint8 poolType; // as in classic or modified
-        // may need protocol state added
     }
 
     // Potential ISSUE if these can be changed, but I doubt that's the case
@@ -150,6 +149,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint _cAmount,
         uint _hAmount
     ) external payable {
+        require(pool[_poolId].priceFeedKey != 0x0, "Pool_Is_Not_Initialized");
         require(msg.value > 0, "Amount must be greater than zero.");
         require(_isCooled == true || _isHeated == true);
         require(_cAmount + _hAmount <= msg.value);
@@ -178,7 +178,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         // Re-Adjust user percentages
         reAdjust(_poolId, false, _isCooled, _isHeated);
 
-        // TEMP until price feed is implemented, don't want to get price again, rather use price from interact()
         pool[_poolId].lastSettledUsdPrice = pool[_poolId].currentUsdPrice;
     }
 
@@ -206,7 +205,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint _hAmount,
         bool _isAll
     ) external nonReentrant {
-        // TEMP || "or"
+        // TEMP || "or" ?
         require(
             pool[_poolId].cEthBal > 0 || pool[_poolId].hEthBal > 0,
             "Protocol_Funds_Insufficient"
@@ -261,7 +260,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         // Re-Adjust user percentages
         reAdjust(_poolId, false, _isCooled, _isHeated);
 
-        // TEMP until price feed is implemented, don't want to get price again, rather use price from interact()
         pool[_poolId].lastSettledUsdPrice = pool[_poolId].currentUsdPrice;
     }
 
@@ -404,6 +402,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
     function retrieveCurrentPrice(uint _poolId) public view returns (uint) {
         // pool's priceFeedAddress is fed into the AggregatorV3Interface
+        require(pool[_poolId].priceFeedKey != 0, "Pool_Is_Not_Initialized");
         bytes32 aggregatorKey = pool[_poolId].priceFeedKey;
         address aggregatorAddress = address(aggregators[aggregatorKey]);
         AggregatorV3Interface priceFeed = AggregatorV3Interface(
@@ -418,7 +417,13 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
         ) = priceFeed.latestRoundData();
         // set number of decimals for token value
-        // uint256 decimals = pool[_poolId].priceFeed.decimals();
+        uint256 priceFeedDecimals = priceFeed.decimals();
+        if (priceFeedDecimals != usdDecimals) {
+            // convert to native decimals for math
+            priceFeedDecimals =
+                (priceFeedDecimals * usdDecimals) /
+                priceFeedDecimals;
+        }
         // return token price and decimals
         // return (uint256(price), decimals);
         return uint256(price);
