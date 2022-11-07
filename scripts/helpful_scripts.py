@@ -72,8 +72,9 @@ def get_contract(contract_name):
     """
     contract_type = contract_to_mock[contract_name]
     if network.show_active() in NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        if len(contract_type) <= 0:
-            deploy_mocks()
+        deploy_mocks()
+        # if len(contract_type) <= 0:
+        #     deploy_mocks()
         contract = contract_type[-1]
     else:
         try:
@@ -199,7 +200,7 @@ def deploy_mock_protocol_in_use():
     non_owner_two = get_account(index=2) # Bob
     non_owner_three = get_account(index=3) # Chris
     non_owner_four = get_account(index=4) # Dan
-    tx = gwin_protocol.initializePool(0, "0x0000000000000000000000000000000000000000", -50_0000000000, 50_0000000000, {"from": account, "value": web3.toWei(20, "ether")})
+    tx = gwin_protocol.initializePool(0, eth_usd_price_feed.address, "0x455448", -50_0000000000, 50_0000000000, {"from": account, "value": web3.toWei(20, "ether")})
     tx.wait(1)
 
     ################### tx1 ###################
@@ -219,7 +220,7 @@ def deploy_mock_protocol_in_use():
     txThree = gwin_protocol.withdrawFromTranche(0, True, False, 0, 0, True, {"from": non_owner})
     txThree.wait(1)
 
-    return gwin_protocol, gwin_ERC20, eth_usd_price_feed
+    return gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed
 
 def rounded(val):
     val = val / 100000000

@@ -22,7 +22,7 @@ def test_get_account():
 #         pytest.skip("Only for local testing!")
 #     account = get_account()
 #     non_owner = get_account(index=1)
-#     gwin_protocol, gwin_ERC20, eth_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+#     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
 #     # Act
 #     gwin_protocol.addAllowedTokens(gwin_ERC20.address, {"from": account})
 #     gwin_ERC20.approve(gwin_protocol.address, Web3.toWei(1, "ether"), {"from": account})
@@ -37,9 +37,9 @@ def test_initialize_protocol():
         pytest.skip("Only for local testing!")
     account = get_account()
     non_owner = get_account(index=1)
-    gwin_protocol, gwin_ERC20, eth_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+    gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
     # Act
-    gwin_protocol.initializePool(0, "0x0000000000000000000000000000000000000000", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+    gwin_protocol.initializePool(0, eth_usd_price_feed.address, "0x455448", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
     # Assert
     assert gwin_protocol.retrieveProtocolCEthBalance.call(0, {"from": account}) == 10000000000000000000 # cEth in protocol
     assert gwin_protocol.retrieveProtocolHEthBalance.call(0, {"from": account}) == 10000000000000000000 # hEth in protocol
@@ -58,7 +58,7 @@ def test_initialize_protocol():
 #         pytest.skip("Only for local testing!")
 #     account = get_account()
 #     non_owner = get_account(index=1)
-#     gwin_protocol, gwin_ERC20, eth_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+#     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
 #     # Act
 #     # Assert
 #     value = gwin_protocol.test.call(1000,1200,18,20,{"from": account})
@@ -80,7 +80,7 @@ def test_initialize_protocol():
 #         pytest.skip("Only for local testing!")
 #     account = get_account()
 #     non_owner = get_account(index=1)
-#     gwin_protocol, gwin_ERC20, eth_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+#     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
 #     # Act
 #     # Assert
 #     value = gwin_protocol.test.call(1000,1100,10,10,{"from": account})
@@ -113,7 +113,7 @@ def test_deploy_mock_protocol_in_use():
     non_owner_two = get_account(index=2) # Bob
     non_owner_three = get_account(index=3) # Chris
     non_owner_four = get_account(index=4) # Dan
-    gwin_protocol, gwin_ERC20, eth_usd_price_feed = deploy_mock_protocol_in_use()
+    gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_mock_protocol_in_use()
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call(0, {"from": account})) == 8_8804772808 # cEth in protocol
     assert rounded(gwin_protocol.retrieveProtocolHEthBalance.call(0, {"from": account})) == 12_1507433794 # hEth in protocol
 
@@ -303,9 +303,9 @@ def test_deploy_mock_protocol_in_use():
 #     non_owner_two = get_account(index=2) # Bob
 #     non_owner_three = get_account(index=3) # Chris
 #     non_owner_four = get_account(index=4) # Dan
-#     gwin_protocol, gwin_ERC20, eth_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+#     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
 #     # Act
-#     tx = gwin_protocol.initializePool(0, "0x0000000000000000000000000000000000000000", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+#     tx = gwin_protocol.initializePool(0, eth_usd_price_feed.address, "0x455448", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
 #     tx.wait(1)
 #     # Assert
 #     assert gwin_protocol.retrieveProtocolCEthBalance.call(0, {"from": account}) == 10_000000000000000000 # cEth in protocol
@@ -320,7 +320,7 @@ def test_deploy_mock_protocol_in_use():
 #     assert valOne == 10_000000000000000000
 #     assert valTwo == 10_000000000000000000
     
-#     tx2 = gwin_protocol.initializePool(0, "0x0000000000000000000000000000000000000000", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+#     tx2 = gwin_protocol.initializePool(0, eth_usd_price_feed.address, "0x455448", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
 #     tx2.wait(1)
     
 #     # Assert
@@ -345,7 +345,7 @@ def test_deploy_mock_protocol_in_use():
 #     non_owner_two = get_account(index=2) # Bob
 #     non_owner_three = get_account(index=3) # Chris
 #     non_owner_four = get_account(index=4) # Dan
-#     gwin_protocol, gwin_ERC20, eth_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+#     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
 #     # Act
 #     eth_usd_price_feed.updateAnswer(1200_00000000, {"from": account})
 #     # Assert
@@ -367,7 +367,7 @@ def test_deploy_mock_protocol_in_use():
 #     non_owner_two = get_account(index=2) # Bob
 #     non_owner_three = get_account(index=3) # Chris
 #     non_owner_four = get_account(index=4) # Dan
-#     gwin_protocol, gwin_ERC20, eth_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+#     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
 #     # Act
 #     eth_usd_price_feed.updateAnswer(1200_00000000, {"from": account})
 #     # Assert

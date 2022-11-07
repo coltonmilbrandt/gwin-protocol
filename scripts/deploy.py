@@ -35,7 +35,7 @@ def deploy_gwin_protocol_and_gwin_token():
     # weth_token = get_contract("weth_token")
     # fau_token = get_contract("fau_token")
     
-    return gwin_protocol, gwin_ERC20, eth_usd_price_feed
+    return gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed
 
 def main():
     deploy_gwin_protocol_and_gwin_token()
