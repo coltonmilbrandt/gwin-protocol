@@ -2,6 +2,7 @@ __pycache__
 .env
 .history
 .hypothesis/
+.DS_Store
 build/
 reports/
 node_modules/
