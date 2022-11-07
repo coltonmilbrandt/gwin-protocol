@@ -33,6 +33,16 @@ contract_to_mock = {
     "oracle": MockOracle,
 }
 
+contract_decimals = {
+    "eth_usd_price_feed": 8,
+    "xau_usd_price_feed": 18,
+}
+
+contract_initial_value = {
+    "eth_usd_price_feed": 1000,
+    "xau_usd_price_feed": 1600,
+}
+
 DECIMALS = 18
 INITIAL_VALUE = 1000_00000000
 BASE_FEE = 100000000000000000  # The premium
@@ -72,9 +82,11 @@ def get_contract(contract_name):
     """
     contract_type = contract_to_mock[contract_name]
     if network.show_active() in NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        deploy_mocks()
-        # if len(contract_type) <= 0:
-        #     deploy_mocks()
+        if contract_type == MockV3Aggregator:
+            deploy_mocks(contract_decimals[contract_name], contract_initial_value[contract_name])
+        else:
+            if len(contract_type) <= 0:
+                deploy_mocks()
         contract = contract_type[-1]
     else:
         try:
