@@ -49,7 +49,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
     // ********* Decimal Values *********
     uint256 decimals = 10**18;
-    uint256 usdDecimals = 10**8;
+    uint8 usdDecimalsUint = 8;
+    uint256 usdDecimals = 10**usdDecimalsUint;
     uint256 bps = 10**12;
 
     // ************* Values *************
@@ -58,7 +59,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     struct Pool {
         uint256 lastSettledUsdPrice;
         uint256 currentUsdPrice;
-        bytes32 priceFeedKey;
+        bytes32 basePriceFeedKey;
+        bytes32 quotePriceFeedKey;
         uint256 hEthBal;
         uint256 cEthBal;
         int256 hRate;
@@ -83,8 +85,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     /// INITIALIZE-POOL /// - this deposits an equal amount to each tranche to initialize a pool
     function initializePool(
         uint8 _type,
-        address _priceFeedAddress,
-        bytes32 _currencyKey,
+        address _basePriceFeedAddress,
+        bytes32 _baseCurrencyKey,
+        address _quotePriceFeedAddress,
+        bytes32 _quoteCurrencyKey,
         int _cRate,
         int _hRate
     ) external payable onlyOwner returns (uint) {
@@ -103,7 +107,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
         pool[newPoolId].cRate = _cRate;
         pool[newPoolId].hRate = _hRate;
-        pool[newPoolId].priceFeedKey = _currencyKey;
+        pool[newPoolId].basePriceFeedKey = _baseCurrencyKey;
+        pool[newPoolId].quotePriceFeedKey = _quoteCurrencyKey;
         uint splitAmount = msg.value / 2;
         ethStakedBalance[newPoolId][msg.sender].cBal += splitAmount;
         ethStakedBalance[newPoolId][msg.sender].cPercent = bps;
@@ -111,7 +116,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ethStakedBalance[newPoolId][msg.sender].hBal += splitAmount;
         ethStakedBalance[newPoolId][msg.sender].hPercent = bps;
         pool[newPoolId].hEthBal = splitAmount;
-        addAggregator(_currencyKey, _priceFeedAddress);
+        addAggregator(_baseCurrencyKey, _basePriceFeedAddress);
+        if (_quotePriceFeedAddress != address(0x0)) {
+            addAggregator(_quoteCurrencyKey, _quotePriceFeedAddress);
+        }
         pool[newPoolId].currentUsdPrice = retrieveCurrentPrice(newPoolId);
         pool[newPoolId].lastSettledUsdPrice = pool[newPoolId].currentUsdPrice;
         newPoolId++;
@@ -141,7 +149,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint _cAmount,
         uint _hAmount
     ) external payable {
-        require(pool[_poolId].priceFeedKey != 0x0, "Pool_Is_Not_Initialized");
+        require(
+            pool[_poolId].basePriceFeedKey != 0x0,
+            "Pool_Is_Not_Initialized"
+        );
         require(msg.value > 0, "Amount must be greater than zero.");
         require(_isCooled == true || _isHeated == true);
         require(_cAmount + _hAmount <= msg.value);
@@ -394,33 +405,82 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
     function retrieveCurrentPrice(uint _poolId) public view returns (uint) {
         // pool's priceFeedAddress is fed into the AggregatorV3Interface
-        require(pool[_poolId].priceFeedKey != 0, "Pool_Is_Not_Initialized");
-        bytes32 aggregatorKey = pool[_poolId].priceFeedKey;
-        address aggregatorAddress = address(aggregators[aggregatorKey]);
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(
-            aggregatorAddress
+        require(
+            pool[_poolId].basePriceFeedKey != 0x0,
+            "Pool_Is_Not_Initialized"
         );
-        (
-            ,
-            /*uint80 roundID*/
-            int price, /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
-            ,
-            ,
+        int price;
+        if (pool[_poolId].quotePriceFeedKey == 0x0) {
+            bytes32 aggregatorKey = pool[_poolId].basePriceFeedKey;
+            address aggregatorAddress = address(aggregators[aggregatorKey]);
+            AggregatorV3Interface priceFeed = AggregatorV3Interface(
+                aggregatorAddress
+            );
+            (
+                ,
+                /*uint80 roundID*/
+                price, /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
+                ,
+                ,
 
-        ) = priceFeed.latestRoundData();
-        // set number of decimals for token value
-        uint priceFeedDecimals = 10**priceFeed.decimals();
-        uint decimalDifference;
-        if (priceFeedDecimals > usdDecimals) {
-            // convert to native decimals for math
-            decimalDifference = priceFeedDecimals / usdDecimals;
-            price = price / int(decimalDifference);
-        } else if (priceFeedDecimals < usdDecimals) {
-            decimalDifference = usdDecimals / priceFeedDecimals;
-            price = price * int(decimalDifference);
+            ) = priceFeed.latestRoundData();
+            // set number of decimals for token value
+            uint priceFeedDecimals = 10**priceFeed.decimals();
+            uint decimalDifference;
+            if (priceFeedDecimals > usdDecimals) {
+                // convert to native decimals for math
+                decimalDifference = priceFeedDecimals / usdDecimals;
+                price = price / int(decimalDifference);
+            } else if (priceFeedDecimals < usdDecimals) {
+                decimalDifference = usdDecimals / priceFeedDecimals;
+                price = price * int(decimalDifference);
+            }
+            // return token price
+            return uint256(price);
+        } else {
+            price = getDerivedPrice(
+                address(aggregators[pool[_poolId].basePriceFeedKey]),
+                address(aggregators[pool[_poolId].quotePriceFeedKey]),
+                uint8(usdDecimalsUint)
+            );
+            return uint256(price);
         }
-        // return token price
-        return uint256(price);
+    }
+
+    function getDerivedPrice(
+        address _base,
+        address _quote,
+        uint8 _decimals
+    ) public view returns (int256) {
+        require(
+            _decimals > uint8(0) && _decimals <= uint8(18),
+            "Invalid _decimals"
+        );
+        int256 feedDecimals = int256(10**uint256(_decimals));
+        (, int256 basePrice, , , ) = AggregatorV3Interface(_base)
+            .latestRoundData();
+        uint8 baseDecimals = AggregatorV3Interface(_base).decimals();
+        basePrice = scalePrice(basePrice, baseDecimals, _decimals);
+
+        (, int256 quotePrice, , , ) = AggregatorV3Interface(_quote)
+            .latestRoundData();
+        uint8 quoteDecimals = AggregatorV3Interface(_quote).decimals();
+        quotePrice = scalePrice(quotePrice, quoteDecimals, _decimals);
+
+        return (basePrice * feedDecimals) / quotePrice; //
+    }
+
+    function scalePrice(
+        int256 _price,
+        uint8 _priceDecimals,
+        uint8 _decimals
+    ) internal pure returns (int256) {
+        if (_priceDecimals < _decimals) {
+            return _price * int256(10**uint256(_decimals - _priceDecimals));
+        } else if (_priceDecimals > _decimals) {
+            return _price / int256(10**uint256(_priceDecimals - _decimals));
+        }
+        return _price;
     }
 
     function retrieveEthInContract() public view returns (uint) {
