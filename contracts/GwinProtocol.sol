@@ -133,14 +133,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         currencyKeyDecimals[currencyKey] = feedDecimals;
     }
 
-    // function setPriceFeedContract(uint _poolId, address _priceFeed)
-    //     public
-    //     onlyOwner
-    // {
-    //     // sets the mapping for the token to its corresponding price feed contract
-    //     pool[_poolId].priceFeed = _priceFeed;
-    // }
-
     /// DEPOSIT /// - used to deposit to cooled or heated tranche, or both
     function depositToTranche(
         uint _poolId,
@@ -417,15 +409,17 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
         ) = priceFeed.latestRoundData();
         // set number of decimals for token value
-        uint256 priceFeedDecimals = priceFeed.decimals();
-        if (priceFeedDecimals != usdDecimals) {
+        uint priceFeedDecimals = 10**priceFeed.decimals();
+        uint decimalDifference;
+        if (priceFeedDecimals > usdDecimals) {
             // convert to native decimals for math
-            priceFeedDecimals =
-                (priceFeedDecimals * usdDecimals) /
-                priceFeedDecimals;
+            decimalDifference = priceFeedDecimals / usdDecimals;
+            price = price / int(decimalDifference);
+        } else if (priceFeedDecimals < usdDecimals) {
+            decimalDifference = usdDecimals / priceFeedDecimals;
+            price = price * int(decimalDifference);
         }
-        // return token price and decimals
-        // return (uint256(price), decimals);
+        // return token price
         return uint256(price);
     }
 
@@ -598,7 +592,15 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         bool _isCooled,
         int256 _assetUsdProfit,
         uint256 _currentAssetUsd
-    ) private view returns (int256, int256) {
+    )
+        private
+        view
+        returns (
+            int256,
+            int256,
+            uint256
+        )
+    {
         // TEMP
         // require(
         //     pool[_poolId].cEthBal > 0 || pool[_poolId].hEthBal > 0, // in Wei
@@ -609,23 +611,37 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         // get tranche balance and basis points for expected return
         if (_isCooled == true) {
             trancheBal = pool[_poolId].cEthBal; // in Wei
-            // CHANGE to variable
             r = pool[_poolId].cRate; // basis points
         } else {
             trancheBal = pool[_poolId].hEthBal; // in Wei
-            // CHANGE to variable
             r = pool[_poolId].hRate; // basis points
         }
+        uint256 cooledRatio = ((pool[_poolId].cEthBal * bps) /
+            (pool[_poolId].cEthBal + pool[_poolId].hEthBal));
+        uint256 nonNaturalRatio = _assetUsdProfit > 0
+            ? cooledRatio
+            : ((1 * bps) - cooledRatio);
         // TEMP?
         // require(trancheBal > 0, "Tranche must have a balance.");
         int256 trancheChange = (int(trancheBal) * int(_currentAssetUsd)) -
             (int(trancheBal) * int(pool[_poolId].lastSettledUsdPrice));
-        // CHANGE to variable
-        int256 expectedPayout = (trancheChange * ((1 * int(bps)) + r)) /
-            int(bps);
+        int256 expectedPayout;
+        if (pool[_poolId].poolType == 0) {
+            expectedPayout = (trancheChange * ((1 * int(bps)) + r)) / int(bps);
+        } else if (pool[_poolId].poolType == 1) {
+            if (cooledRatio > 50_0000000000) {
+                expectedPayout =
+                    trancheChange *
+                    (int(bps) + (r - int(cooledRatio)));
+            } else {
+                expectedPayout =
+                    trancheChange *
+                    (int(bps) + (r - (int(bps) - int(cooledRatio))));
+            }
+        }
         int256 allocationDifference = expectedPayout - trancheChange;
         allocationDifference = allocationDifference / int(decimals);
-        return (allocationDifference, trancheChange);
+        return (allocationDifference, trancheChange, nonNaturalRatio);
     }
 
     /// INTERACT /// - rebalances the cooled and heated tranches
@@ -633,10 +649,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint256 currentAssetUsd = retrieveCurrentPrice(_poolId);
         pool[_poolId].currentUsdPrice = currentAssetUsd;
         int256 assetUsdProfit = getProfit(_poolId, currentAssetUsd); // returns ETH/USD profit in terms of basis points
+
         // find expected return and use it to calculate allocation difference for each tranche
         (
             int256 cooledAllocationDiff,
-            int256 cooledChange
+            int256 cooledChange,
+            uint nonNaturalMultiplier
         ) = trancheSpecificCalcs(
                 _poolId,
                 true,
@@ -645,16 +663,14 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             );
         (
             int256 heatedAllocationDiff,
-            int256 heatedChange
+            int256 heatedChange,
+
         ) = trancheSpecificCalcs(
                 _poolId,
                 false,
                 assetUsdProfit,
                 currentAssetUsd
             );
-        // CHECK moved this, make sure it still works
-        uint256 percentCooledTranche = ((pool[_poolId].cEthBal * bps) /
-            (pool[_poolId].cEthBal + pool[_poolId].hEthBal));
         // use allocation differences to figure the absolute allocation total
         uint256 absAllocationTotal;
         {
@@ -667,9 +683,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 : absCooledAllocationDiff;
             int256 nonNaturalDifference = heatedAllocationDiff +
                 cooledAllocationDiff;
-            uint256 nonNaturalMultiplier = assetUsdProfit > 0
-                ? percentCooledTranche
-                : ((1 * bps) - percentCooledTranche);
+
             uint256 adjNonNaturalDiff = (uint(abs(nonNaturalDifference)) *
                 nonNaturalMultiplier) / bps;
             absAllocationTotal = uint(minAbsAllocation) + adjNonNaturalDiff;
@@ -742,18 +756,18 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         returns (uint, uint)
     {
         int256 assetUsdProfit = getProfit(_poolId, _simAssetUsd); // returns ETH/USD profit in terms of basis points
+
         // find expected return and use it to calculate allocation difference for each tranche
         (
             int256 cooledAllocationDiff,
-            int256 cooledChange
+            int256 cooledChange,
+            uint nonNaturalMultiplier
         ) = trancheSpecificCalcs(_poolId, true, assetUsdProfit, _simAssetUsd);
         (
             int256 heatedAllocationDiff,
-            int256 heatedChange
+            int256 heatedChange,
+
         ) = trancheSpecificCalcs(_poolId, false, assetUsdProfit, _simAssetUsd);
-        // CHECK moved this, make sure it still works
-        uint256 percentCooledTranche = ((pool[_poolId].cEthBal * bps) /
-            (pool[_poolId].cEthBal + pool[_poolId].hEthBal));
         // use allocation differences to figure the absolute allocation total
         uint256 absAllocationTotal;
         {
@@ -766,16 +780,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 : absCooledAllocationDiff;
             int256 nonNaturalDifference = heatedAllocationDiff +
                 cooledAllocationDiff;
-            uint256 nonNaturalMultiplier = assetUsdProfit > 0
-                ? percentCooledTranche
-                : ((1 * bps) - percentCooledTranche);
+
             uint256 adjNonNaturalDiff = (uint(abs(nonNaturalDifference)) *
                 nonNaturalMultiplier) / bps;
             absAllocationTotal = uint(minAbsAllocation) + adjNonNaturalDiff;
         }
-
-        // needed variables: _simAssetUsd, cooledChange, cooledAllocation
-        // heated allocation is the inverse of the cooled allocation
 
         return
             simulateReallocate(
