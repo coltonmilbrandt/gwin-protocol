@@ -699,7 +699,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             ) {
                 cooledAllocation = -int(absAllocationTotal);
             } else {
-                cooledAllocation = int(
+                cooledAllocation = -int(
                     (pool[_poolId].cEthBal * currentAssetUsd) / decimals
                 ); // the cEthBal USD value (in UsDecimals * Decimals)
             }
@@ -815,7 +815,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             ) {
                 cooledAllocation = -int(_absAllocationTotal);
             } else {
-                cooledAllocation = int(
+                cooledAllocation = -int(
                     (pool[_poolId].cEthBal * _simAssetUsd) / decimals
                 ); // the cEthBal USD value (in UsDecimals * Decimals)
             }
