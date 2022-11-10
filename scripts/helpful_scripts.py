@@ -10,6 +10,7 @@ from brownie import (
     Contract,
     web3,
 )
+from web3 import Web3
 import time
 import math
 import pytest
@@ -205,7 +206,7 @@ def deploy_mock_protocol_in_use():
     eth_usd_price_feed = get_contract("eth_usd_price_feed")
     xau_usd_price_feed = get_contract("xau_usd_price_feed")
     eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account})
-    xau_usd_price_feed.updateAnswer(1600_00000000, {"from": account})
+    xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account})
     tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
     tx.wait(1)
     non_owner = get_account(index=1) # Alice
@@ -251,11 +252,11 @@ def extra_rounded(val):
     return val
 
 def rnd(val):
-    val = val / 10
-    val = int(val)
     val = val / 100
+    val = int(val)
+    val = val / 1000
     val = round_up(val)
-    val = val * 1000
+    val = val * 10000
     val = int(val)
     return val
 

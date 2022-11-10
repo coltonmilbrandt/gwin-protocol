@@ -27,7 +27,7 @@ def deploy_gwin_protocol_and_gwin_token():
     xau_usd_price_feed = get_contract("xau_usd_price_feed")
     if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account})
-        xau_usd_price_feed.updateAnswer(1600_00000000, {"from": account})
+        xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account})
     tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
     tx.wait(1)
     # adds the tokens we are allowing to be staked

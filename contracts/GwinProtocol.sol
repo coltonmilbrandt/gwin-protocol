@@ -691,12 +691,13 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         } else if (pool[_poolId].poolType == 1) {
             if (cooledRatio > 50_0000000000) {
                 expectedPayout =
-                    trancheChange *
-                    (int(bps) + (r - int(cooledRatio)));
+                    (trancheChange * (int(bps) + ((r - int(cooledRatio))))) /
+                    int(bps);
             } else {
                 expectedPayout =
-                    trancheChange *
-                    (int(bps) + (r - (int(bps) - int(cooledRatio))));
+                    (trancheChange *
+                        (int(bps) + ((r - (int(bps) - int(cooledRatio)))))) /
+                    int(bps);
             }
         }
         int256 allocationDifference = expectedPayout - trancheChange;
@@ -723,7 +724,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             );
         (
             int256 heatedAllocationDiff,
-            int256 heatedChange,
+            int256 heatedChange, // nonNaturalMultiplier excluded
 
         ) = trancheSpecificCalcs(
                 _poolId,
