@@ -134,9 +134,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             aggregatorAddress
         );
         uint8 feedDecimals = aggregator.decimals();
-        // if (address(aggregators[currencyKey]) == address(0)) {
-        aggregatorKeys.push(currencyKey);
-        // }
+        // TEMP IF??
+        if (address(aggregators[currencyKey]) == address(0)) {
+            aggregatorKeys.push(currencyKey);
+        }
         aggregators[currencyKey] = aggregator;
         currencyKeyDecimals[currencyKey] = feedDecimals;
     }
