@@ -28,13 +28,8 @@ def deploy_gwin_protocol_and_gwin_token():
     if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account})
         xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account})
-    tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
-    tx.wait(1)
-    # adds the tokens we are allowing to be staked
-    # we will allow GWIN, WETH, FAU (i.e. DAI)
-    # weth_token = get_contract("weth_token")
-    # fau_token = get_contract("fau_token")
-    
+    tx1 = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
+    tx1.wait(1)
     return gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed
 
 def main():

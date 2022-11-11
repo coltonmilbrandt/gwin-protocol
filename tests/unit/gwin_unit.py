@@ -61,60 +61,6 @@ def test_only_owner_can_initialize():
     with pytest.raises(ValueError):
         gwin_protocol.initializePool(0, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": non_owner, "value": Web3.toWei(20, "ether")})
 
-# Legacy math tests - Left here to archive situations that passed, since nothing has changed in the math since passing.
-# NOTE: delete this if the math is adjusted
-# def test_uneven():
-#     # Arrange
-#     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-#         pytest.skip("Only for local testing!")
-#     account = get_account()
-#     non_owner = get_account(index=1)
-#     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
-#     # Act
-#     # Assert
-#     value = gwin_protocol.test.call(1000,1200,18,20,{"from": account})
-#     assert short_round(value[0]) == 1958
-#     assert short_round(value[1]) == 1841
-#     assert short_round(value[2]) == 3800
-#     value = gwin_protocol.test.call(500,300,25,12,{"from": account})
-#     assert short_round(value[0]) == 1807
-#     assert short_round(value[1]) == 1892
-#     assert short_round(value[2]) == 3700
-#     value = gwin_protocol.test.call(10500,7124,100,12,{"from": account})
-#     assert short_round(value[0]) == 7853
-#     assert short_round(value[1]) == 3346
-#     assert short_round(value[2]) == 11200
-
-# def test_interaction():
-#     # Arrange
-#     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-#         pytest.skip("Only for local testing!")
-#     account = get_account()
-#     non_owner = get_account(index=1)
-#     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
-#     # Act
-#     # Assert
-#     value = gwin_protocol.test.call(1000,1100,10,10,{"from": account})
-#     assert short_round(value[0]) == 1045 # heated
-#     assert short_round(value[1]) == 954 # cooled
-#     assert short_round(value[2]) == 2000 # total
-#     value = gwin_protocol.test.call(1000,900,10,10,{"from": account})
-#     assert short_round(value[0]) == 944
-#     assert short_round(value[1]) == 1055
-#     assert short_round(value[2]) == 2000
-#     value = gwin_protocol.test.call(1000,750,10,10,{"from": account})
-#     assert short_round(value[0]) == 833
-#     assert short_round(value[1]) == 1166
-#     assert short_round(value[2]) == 2000
-#     value = gwin_protocol.test.call(1000,1511,10,10,{"from": account})
-#     assert short_round(value[0]) == 1169
-#     assert short_round(value[1]) == 830
-#     assert short_round(value[2]) == 2000
-#     value = gwin_protocol.test.call(1000,2888,10,10,{"from": account})
-#     assert short_round(value[0]) == 1326
-#     assert short_round(value[1]) == 673
-#     assert short_round(value[2]) == 2000
-
 def test_deploy_mock_protocol_in_use():
     # Arrange
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:

@@ -14,9 +14,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint hPercent;
     }
 
-    // // user address -> user balances struct
-    // mapping(address => Bal) public ethStakedBalance;
-
     // pool ID -> user address -> user balances struct
     mapping(uint => mapping(address => Bal)) public ethStakedBalance;
 
@@ -27,9 +24,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     // pool ID    ->   address  ->  isUnique
     mapping(uint => mapping(address => bool)) public isUniqueEthStaker;
 
-    // TEMP?
+    // aggregator key -> aggregator
     mapping(bytes32 => AggregatorV3Interface) public aggregators;
 
+    // aggreagator key -> feed decimals
     mapping(bytes32 => uint8) public currencyKeyDecimals;
 
     // List of aggregator keys for convenient iteration
@@ -70,9 +68,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
     // Potential ISSUE if these can be changed, but I doubt that's the case
 
-    // // *********  Test Values   *********
-    // uint256 pEthBal;
-
     // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor
     IERC20 public gwinToken;
 
@@ -93,7 +88,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         int _hRate
     ) external payable onlyOwner returns (uint) {
         // ADD require that pool ID is not taken
-        // ADD require that cRate and hRate are appropriate and match uint8 _type
         poolIds.push(newPoolId);
         pool[newPoolId].poolType = _type;
         require(
@@ -134,7 +128,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             aggregatorAddress
         );
         uint8 feedDecimals = aggregator.decimals();
-        // TEMP IF??
         if (address(aggregators[currencyKey]) == address(0)) {
             aggregatorKeys.push(currencyKey);
         }
@@ -553,31 +546,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         );
     }
 
-    // // ****** TEMPORARY TESTING ******
-    // function test(
-    //     uint _startPrice,
-    //     uint _endPrice,
-    //     uint _hEthAll,
-    //     uint _cEthAll
-    // )
-    //     public
-    //     returns (
-    //         uint,
-    //         uint,
-    //         uint
-    //     )
-    // {
-    //     pool[_poolId].hEthBal = _hEthAll * decimals;
-    //     pool[_poolId].cEthBal = _cEthAll * decimals;
-    //     pEthBal = (_hEthAll + _cEthAll) * decimals;
-    //     pool[_poolId].lastSettledUsdPrice = _startPrice * usdDecimals;
-    //     pool[_poolId].currentUsdPrice = _endPrice * usdDecimals;
-    //     uint hEthVal;
-    //     uint cEthVal;
-    //     (hEthVal, cEthVal) = interact();
-    //     return (hEthVal, cEthVal, pEthBal);
-    // }
-
     /// STAKE-TOKENS /// - for future use with ERC-20s
     function stakeTokens(uint256 _amount, address _token) public {
         // Make sure that the amount to stake is more than 0
@@ -778,8 +746,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 );
             }
         }
-        // needed variables: currentAssetUsd, cooledChange, cooledAllocation
-        // heated allocation is the inverse of the cooled allocation
 
         reallocate(_poolId, currentAssetUsd, cooledChange, cooledAllocation); // reallocate the protocol ETH according to price movement
     }
