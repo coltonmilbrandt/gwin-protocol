@@ -16,7 +16,9 @@ def test_use_protocol():
     non_owner_four = get_account(index=4) # Dan
     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
     # Act
-    tx = gwin_protocol.initializePool(0, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+
+    parent_id = 0
+    tx = gwin_protocol.initializePool(0, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
     tx.wait(1)
     
     eth_usd, last_eth = gwin_protocol.retrieveProtocolEthPrice(0)
@@ -55,9 +57,9 @@ def test_use_protocol():
     assert rounded(gwin_protocol.retrieveProtocolCEthBalance.call(0, {"from": account})) == 10_1666666666 # cEth in protocol
     assert rounded(gwin_protocol.retrieveProtocolHEthBalance.call(0, {"from": account})) == 10_8333333333 # hEth in protocol
 
-    # valOne, valTwo = gwin_protocol.simulateInteract.call(0, 1200_00000000)
-    # assert rounded(valTwo) == 10_1666666666
-    # assert rounded(valOne) == 10_8333333333
+    valOne, valTwo = gwin_protocol.simulateInteract.call(0, 1200_00000000)
+    assert rounded(valTwo) == 10_1666666666
+    assert rounded(valOne) == 10_8333333333
 
     assert gwin_protocol.retrieveCEthBalance.call(0, account.address, {"from": account}) == 9_166666666666666666 # cEth for account 
     assert gwin_protocol.retrieveCEthPercentBalance.call(0, account.address, {"from": account}) == 90_1639344262 # cEth % for account
@@ -535,8 +537,9 @@ def test_use_protocol():
 
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\  XAU Stable / Short  /@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
 
+    parent_id = 0
     # Act                                                       "ETH/USD"                               "XAU/USD"
-    gwin_protocol.initializePool(1, eth_usd_price_feed.address, "0x455448", xau_usd_price_feed.address, "0x584155", -100_0000000000, 100_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+    gwin_protocol.initializePool(1, parent_id, eth_usd_price_feed.address, "0x455448", xau_usd_price_feed.address, "0x584155", -100_0000000000, 100_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
     # Assert
     xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account}) # TEMP
     assert gwin_protocol.retrieveProtocolCEthBalance.call(1, {"from": account}) == 10000000000000000000 # cEth in protocol
@@ -871,8 +874,9 @@ def test_use_protocol():
     eth_usd_price_feed.updateAnswer(feed_eth, {"from": account})
     assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1300_00000000
 
+    parent_id = 0
     # Act                                                       "ETH/USD"                               "XAU/USD"
-    gwin_protocol.initializePool(1, eth_usd_price_feed.address, "0x455448", xau_usd_price_feed.address, "0x584155", -200_0000000000, 400_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+    gwin_protocol.initializePool(1, parent_id, eth_usd_price_feed.address, "0x455448", xau_usd_price_feed.address, "0x584155", -200_0000000000, 400_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
     # Assert
     assert gwin_protocol.retrieveProtocolCEthBalance.call(xau_ls_pool_id, {"from": account}) == 10000000000000000000 # cEth in protocol
     assert gwin_protocol.retrieveProtocolHEthBalance.call(xau_ls_pool_id, {"from": account}) == 10000000000000000000 # hEth in protocol

@@ -39,7 +39,8 @@ def test_initialize_protocol():
     non_owner = get_account(index=1)
     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
     # Act
-    gwin_protocol.initializePool(0, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+    parent_id = 0
+    gwin_protocol.initializePool(0, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
     # Assert
     assert gwin_protocol.retrieveProtocolCEthBalance.call(0, {"from": account}) == 10000000000000000000 # cEth in protocol
     assert gwin_protocol.retrieveProtocolHEthBalance.call(0, {"from": account}) == 10000000000000000000 # hEth in protocol
@@ -59,7 +60,8 @@ def test_only_owner_can_initialize():
     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
     # Act/Assert
     with pytest.raises(ValueError):
-        gwin_protocol.initializePool(0, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": non_owner, "value": Web3.toWei(20, "ether")})
+        parent_id = 0
+        gwin_protocol.initializePool(0, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": non_owner, "value": Web3.toWei(20, "ether")})
 
 def test_deploy_mock_protocol_in_use():
     # Arrange
@@ -262,7 +264,8 @@ def test_can_create_second_pool():
     non_owner_four = get_account(index=4) # Dan
     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
     # Act
-    tx = gwin_protocol.initializePool(0, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+    parent_id = 0
+    tx = gwin_protocol.initializePool(0, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
     tx.wait(1)
     # Assert
     assert gwin_protocol.retrieveProtocolCEthBalance.call(0, {"from": account}) == 10_000000000000000000 # cEth in protocol
@@ -277,7 +280,8 @@ def test_can_create_second_pool():
     assert valOne == 10_000000000000000000
     assert valTwo == 10_000000000000000000
     
-    tx2 = gwin_protocol.initializePool(0, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+    parent_id = 0
+    tx2 = gwin_protocol.initializePool(0, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
     tx2.wait(1)
     
     # Assert
@@ -621,8 +625,9 @@ def test_initialize_xau_pool():
     xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account}) # TEMP
     eth_usd_price_feed.updateAnswer(feed_eth, {"from": account})
 
+    parent_id = 0
     # Act                                                       "ETH/USD"                               "XAU/USD"
-    gwin_protocol.initializePool(1, eth_usd_price_feed.address, "0x455448", xau_usd_price_feed.address, "0x584155", -200_0000000000, 400_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+    gwin_protocol.initializePool(1, parent_id, eth_usd_price_feed.address, "0x455448", xau_usd_price_feed.address, "0x584155", -200_0000000000, 400_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
     # Assert
     assert gwin_protocol.retrieveProtocolCEthBalance.call(xau_ls_pool_id, {"from": account}) == 10000000000000000000 # cEth in protocol
     assert gwin_protocol.retrieveProtocolHEthBalance.call(xau_ls_pool_id, {"from": account}) == 10000000000000000000 # hEth in protocol

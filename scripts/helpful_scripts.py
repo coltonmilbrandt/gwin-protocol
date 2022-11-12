@@ -213,7 +213,8 @@ def deploy_mock_protocol_in_use():
     non_owner_two = get_account(index=2) # Bob
     non_owner_three = get_account(index=3) # Chris
     non_owner_four = get_account(index=4) # Dan
-    tx = gwin_protocol.initializePool(0, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": account, "value": web3.toWei(20, "ether")})
+    parent_id = 0
+    tx = gwin_protocol.initializePool(0, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": account, "value": web3.toWei(20, "ether")})
     tx.wait(1)
 
     ################### tx1 ###################

@@ -14,8 +14,16 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint hPercent;
     }
 
+    struct ParentBal {
+        uint cBal;
+        uint cPercent;
+    }
+
     // pool ID -> user address -> user balances struct
     mapping(uint => mapping(address => Bal)) public ethStakedBalance;
+
+    // parentID -> user adddress -> user balances struc
+    mapping(uint => mapping(address => ParentBal)) public ethStakedWithParent;
 
     // token address -> staker address -> amount
     mapping(address => mapping(address => uint256)) public stakingBalance;
@@ -36,6 +44,22 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     //    pool ID --> struct
     mapping(uint => Pool) public pool;
 
+    //    pool ID --> parent pool
+    mapping(uint => ParentPoolBal) public parentPoolBal;
+
+    struct ParentPoolBal {
+        uint cEthBal;
+        uint hEthBal;
+        uint cWeight;
+        uint hWeight;
+        uint[] childPoolIds;
+    }
+
+    //    pool ID -> parent pool ID
+    mapping(uint => uint) public parentPoolId;
+    // parent pool ID -> child pool IDs
+    mapping(uint => Pool) public parentPoolChildren;
+
     // pool ID --> array of ETH stakers
     mapping(uint => address[]) public ethStakers;
     // array of stakers
@@ -55,6 +79,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     uint newPoolId = 0;
 
     struct Pool {
+        uint parentId;
         uint256 lastSettledUsdPrice;
         uint256 currentUsdPrice;
         bytes32 basePriceFeedKey;
@@ -80,6 +105,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     /// INITIALIZE-POOL /// - this deposits an equal amount to each tranche to initialize a pool
     function initializePool(
         uint8 _type,
+        uint8 _parentId,
         address _basePriceFeedAddress,
         bytes32 _baseCurrencyKey,
         address _quotePriceFeedAddress,
@@ -103,13 +129,48 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         pool[newPoolId].hRate = _hRate;
         pool[newPoolId].basePriceFeedKey = _baseCurrencyKey;
         pool[newPoolId].quotePriceFeedKey = _quoteCurrencyKey;
-        uint splitAmount = msg.value / 2;
-        ethStakedBalance[newPoolId][msg.sender].cBal += splitAmount;
-        ethStakedBalance[newPoolId][msg.sender].cPercent = bps;
-        pool[newPoolId].cEthBal = splitAmount;
-        ethStakedBalance[newPoolId][msg.sender].hBal += splitAmount;
+        uint hDepositAmount;
+        uint cDepositAmount;
+        if (_type > 0) {
+            // if equal pools
+            hDepositAmount = msg.value / 2;
+            cDepositAmount = msg.value / 2;
+        } else {
+            // if unequal pools
+            uint hEthPercent = uint(
+                (abs(_hRate) * int(bps)) / (abs(_hRate) + abs(_cRate))
+            );
+            hDepositAmount = (msg.value * hEthPercent) / bps;
+            cDepositAmount = msg.value - hDepositAmount;
+        }
+        ethStakedBalance[newPoolId][msg.sender].hBal += hDepositAmount;
         ethStakedBalance[newPoolId][msg.sender].hPercent = bps;
-        pool[newPoolId].hEthBal = splitAmount;
+        pool[newPoolId].hEthBal = hDepositAmount;
+        pool[newPoolId].cEthBal = cDepositAmount; // temp move??
+        parentPoolId[newPoolId] = _parentId;
+        if (_parentId != 0) {
+            pool[newPoolId].parentId = _parentId;
+            // set parent pool balances and weights
+            parentPoolBal[newPoolId].childPoolIds.push(newPoolId);
+            // @DEV do we need to rebalance prior to adding to parent bal! probably...
+            parentPoolBal[newPoolId].cEthBal += cDepositAmount;
+            parentPoolBal[newPoolId].hEthBal += hDepositAmount;
+            parentPoolBal[newPoolId].cWeight += uint(
+                abs(pool[newPoolId].cRate)
+            );
+            parentPoolBal[newPoolId].hWeight += uint(
+                abs(pool[newPoolId].hRate)
+            );
+            ethStakedWithParent[newPoolId][msg.sender].cBal += cDepositAmount;
+            ethStakedWithParent[newPoolId][msg.sender].cPercent =
+                (ethStakedWithParent[newPoolId][msg.sender].cBal * bps) /
+                parentPoolBal[newPoolId].cEthBal;
+            reAdjustChildPools(newPoolId);
+        } else {
+            ethStakedBalance[newPoolId][msg.sender].cBal += cDepositAmount;
+            ethStakedBalance[newPoolId][msg.sender].cPercent = bps;
+            // temp move cethbal??
+        }
         addAggregator(_baseCurrencyKey, _basePriceFeedAddress);
         if (_quotePriceFeedAddress != address(0x0)) {
             addAggregator(_quoteCurrencyKey, _quotePriceFeedAddress);
@@ -118,6 +179,33 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         pool[newPoolId].lastSettledUsdPrice = pool[newPoolId].currentUsdPrice;
         newPoolId++;
         return newPoolId - 1;
+    }
+
+    function reAdjustChildPools(uint poolId) private {
+        uint hEthPerCethWeight = parentPoolBal[newPoolId].hWeight /
+            parentPoolBal[newPoolId].cWeight; // bps
+        uint targetedCooledStake = (parentPoolBal[newPoolId].hEthBal *
+            hEthPerCethWeight); // bps
+        uint cEthStakedToTargetedRatio = parentPoolBal[newPoolId].cEthBal /
+            targetedCooledStake;
+        for (
+            uint256 i = 0;
+            i < parentPoolBal[poolId].childPoolIds.length;
+            i++
+        ) {
+            uint poolIdIndex = parentPoolBal[poolId].childPoolIds[i];
+            if (cEthStakedToTargetedRatio < 1) {
+                pool[poolIdIndex].cEthBal =
+                    (pool[poolIdIndex].hEthBal * cEthStakedToTargetedRatio) /
+                    bps;
+            } else {
+                uint cEthOverEven = parentPoolBal[newPoolId].cEthBal %
+                    targetedCooledStake;
+                pool[poolIdIndex].cEthBal =
+                    (pool[poolIdIndex].hEthBal * hEthPerCethWeight) +
+                    (cEthOverEven / parentPoolBal[poolId].childPoolIds.length);
+            }
+        }
     }
 
     function addAggregator(bytes32 currencyKey, address aggregatorAddress)
@@ -152,7 +240,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         require(_cAmount + _hAmount <= msg.value);
 
         // Interact to rebalance Tranches with new USD price
-        interact(_poolId);
+        interactByPool(_poolId);
         // Re-adjust to update balances after price change
         reAdjust(_poolId, true, _isCooled, _isHeated);
         // Deposit ETH
@@ -213,7 +301,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         require(_isCooled == true || _isHeated == true);
 
         // Interact to rebalance Tranches with new USD price
-        interact(_poolId);
+        interactByPool(_poolId);
         // Re-adjust the user balances based on price change
         reAdjust(_poolId, true, _isCooled, _isHeated);
 
@@ -269,6 +357,31 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ethStakers[_poolId].pop();
     }
 
+    function interactByPool(uint poolId) private {
+        if (parentPoolId[poolId] == 0) {
+            interact(poolId);
+        } else {
+            // refactor
+            uint cEthInChildPools;
+            uint hEthInChildPools;
+            for (
+                uint256 i = 0;
+                i < parentPoolBal[poolId].childPoolIds.length;
+                i++
+            ) {
+                uint poolIdIndex = parentPoolBal[poolId].childPoolIds[i];
+                interact(poolIdIndex);
+                cEthInChildPools += pool[poolIdIndex].cEthBal;
+                hEthInChildPools += pool[poolIdIndex].hEthBal;
+            }
+            parentPoolBal[poolId].cEthBal = cEthInChildPools;
+            parentPoolBal[poolId].hEthBal = hEthInChildPools;
+            reAdjustChildPools(poolId);
+        }
+    }
+
+    // Need to readjust all child pools, so re-adjust doesn't work as is
+
     // RE-ADJUST /// - adjusts affected tranche percentages and balances
     function reAdjust(
         uint _poolId,
@@ -279,17 +392,23 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         if (_beforeTx == true) {
             // BEFORE deposit, only balances are affected based on percentages
             liquidateIfZero(_poolId);
-            // ISSUE this could likely be optimized to avoid performing the for loops twice when liquidated
             for (
                 uint256 ethStakersIndex = 0;
                 ethStakersIndex < ethStakers[_poolId].length;
                 ethStakersIndex++
             ) {
                 address addrC = ethStakers[_poolId][ethStakersIndex];
-                ethStakedBalance[_poolId][addrC].cBal =
-                    (pool[_poolId].cEthBal *
-                        ethStakedBalance[_poolId][addrC].cPercent) /
-                    bps;
+                if (parentPoolId[_poolId] == 0) {
+                    ethStakedBalance[_poolId][addrC].cBal =
+                        (pool[_poolId].cEthBal *
+                            ethStakedBalance[_poolId][addrC].cPercent) /
+                        bps;
+                } else {
+                    ethStakedWithParent[_poolId][addrC].cBal =
+                        (parentPoolBal[_poolId].cEthBal *
+                            ethStakedWithParent[_poolId][addrC].cPercent) /
+                        bps; // NOTE: need to update cEthBal for this to work!!!! Pick up here
+                }
                 ethStakedBalance[_poolId][addrC].hBal =
                     (pool[_poolId].hEthBal *
                         ethStakedBalance[_poolId][addrC].hPercent) /
@@ -307,9 +426,15 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     ethStakersIndex++
                 ) {
                     address addrC = ethStakers[_poolId][ethStakersIndex];
-                    ethStakedBalance[_poolId][addrC].cPercent =
-                        (ethStakedBalance[_poolId][addrC].cBal * bps) /
-                        pool[_poolId].cEthBal;
+                    if (parentPoolId[_poolId] == 0) {
+                        ethStakedBalance[_poolId][addrC].cPercent =
+                            (ethStakedBalance[_poolId][addrC].cBal * bps) /
+                            pool[_poolId].cEthBal;
+                    } else {
+                        ethStakedWithParent[_poolId][addrC].cPercent =
+                            (ethStakedWithParent[_poolId][addrC].cBal * bps) /
+                            parentPoolBal[_poolId].cEthBal;
+                    }
                     // Flags index and stores for removal AFTER calculations are finished
                     // #indexRemovalProblem
                     // if (
@@ -349,9 +474,16 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     ethStakersIndex++
                 ) {
                     address addrC = ethStakers[_poolId][ethStakersIndex];
-                    ethStakedBalance[_poolId][addrC].cPercent =
-                        (ethStakedBalance[_poolId][addrC].cBal * bps) /
-                        pool[_poolId].cEthBal;
+                    if (parentPoolId[_poolId] == 0) {
+                        ethStakedBalance[_poolId][addrC].cPercent =
+                            (ethStakedBalance[_poolId][addrC].cBal * bps) /
+                            pool[_poolId].cEthBal;
+                    } else {
+                        ethStakedWithParent[_poolId][addrC].cPercent =
+                            (ethStakedWithParent[_poolId][addrC].cBal * bps) /
+                            parentPoolBal[_poolId].cEthBal;
+                    }
+
                     ethStakedBalance[_poolId][addrC].hPercent =
                         (ethStakedBalance[_poolId][addrC].hBal * bps) /
                         pool[_poolId].hEthBal;
@@ -376,6 +508,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
     /// LIQUIDATE-IF-ZERO /// - liquidates every user in a zero balance tranche
     function liquidateIfZero(uint _poolId) private {
+        // ISSUE this could likely be optimized to avoid performing the for loops twice when liquidated
         for (
             uint256 ethStakersIndex = 0;
             ethStakersIndex < ethStakers[_poolId].length;
