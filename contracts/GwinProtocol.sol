@@ -147,25 +147,24 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         pool[newPoolId].currentUsdPrice = retrieveCurrentPrice(newPoolId);
         pool[newPoolId].lastSettledUsdPrice = pool[newPoolId].currentUsdPrice;
         if (_parentId != 0) {
-            // pool[newPoolId].parentId = _parentId;
             // set parent pool balances and weights
             parentPoolBal[_parentId].childPoolIds.push(newPoolId);
             // @DEV do we need to rebalance prior to adding to parent bal! probably...
-            parentPoolBal[_parentId].cEthBal += cDepositAmount;
-            parentPoolBal[_parentId].hEthBal += hDepositAmount;
             if (parentPoolBal[_parentId].childPoolIds.length > 1) {
                 // Interact to rebalance Tranches with new price
                 // interactByPool(newPoolId); //temp
                 // Re-adjust to update balances after price change
                 // reAdjust(newPoolId, true, true, false); //temp
             }
+            parentPoolBal[_parentId].cEthBal += cDepositAmount;
+            parentPoolBal[_parentId].hEthBal += hDepositAmount;
             ethStakedWithParent[_parentId][msg.sender].cBal += cDepositAmount;
             ethStakedWithParent[_parentId][msg.sender].cPercent =
                 (ethStakedWithParent[_parentId][msg.sender].cBal * bps) /
                 parentPoolBal[_parentId].cEthBal;
             if (parentPoolBal[_parentId].childPoolIds.length > 1) {
                 // Re-Adjust user percentages
-                // reAdjust(newPoolId, false, true, false); //temp
+                reAdjust(newPoolId, false, true, false); //temp????
                 // Balance allocations to child pools
                 // TEMP : don't think this is needed here, as it is called in interactByPool()
                 reAdjustChildPools(newPoolId);
@@ -257,6 +256,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         require(msg.value > 0, "Amount must be greater than zero.");
         require(_isCooled == true || _isHeated == true);
         require(_cAmount + _hAmount <= msg.value);
+        uint parentId = parentPoolId[_poolId];
 
         // Interact to rebalance Tranches with new USD price
         interactByPool(_poolId);
@@ -266,12 +266,22 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         if (_isCooled == true && _isHeated == false) {
             ethStakedBalance[_poolId][msg.sender].cBal += msg.value;
             pool[_poolId].cEthBal += msg.value;
+            if (parentPoolId[_poolId] != 0) {
+                // add to parent balance
+                ethStakedWithParent[parentId][msg.sender].cBal += msg.value;
+                parentPoolBal[parentId].cEthBal += msg.value;
+            }
         } else if (_isCooled == false && _isHeated == true) {
             ethStakedBalance[_poolId][msg.sender].hBal += msg.value;
             pool[_poolId].hEthBal += msg.value;
         } else if (_isCooled == true && _isHeated == true) {
             ethStakedBalance[_poolId][msg.sender].cBal += _cAmount;
             pool[_poolId].cEthBal += _cAmount;
+            if (parentPoolId[_poolId] != 0) {
+                // add to parent balance
+                ethStakedWithParent[parentId][msg.sender].cBal += _cAmount;
+                parentPoolBal[parentId].cEthBal += _cAmount;
+            }
             ethStakedBalance[_poolId][msg.sender].hBal += _hAmount;
             pool[_poolId].hEthBal += _hAmount;
         }
@@ -318,6 +328,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             require(_cAmount > 0 || _hAmount > 0, "Zero_Withdrawal_Amount");
         }
         require(_isCooled == true || _isHeated == true);
+        uint parentId = parentPoolId[_poolId];
 
         // Interact to rebalance Tranches with new USD price
         interactByPool(_poolId);
@@ -344,6 +355,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             // Cooled and Heated
             ethStakedBalance[_poolId][msg.sender].cBal -= _cAmount;
             pool[_poolId].cEthBal -= _cAmount;
+            if (parentPoolId[_poolId] != 0) {
+                // deduct from parent balance
+                ethStakedWithParent[_poolId][msg.sender].cBal -= _cAmount;
+                parentPoolBal[parentId].cEthBal -= _cAmount;
+            }
             ethStakedBalance[_poolId][msg.sender].hBal -= _hAmount;
             pool[_poolId].hEthBal -= _hAmount;
             payable(msg.sender).transfer(_cAmount + _hAmount);
@@ -352,6 +368,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 // Cooled, No Heated
                 ethStakedBalance[_poolId][msg.sender].cBal -= _cAmount;
                 pool[_poolId].cEthBal -= _cAmount;
+                if (parentPoolId[_poolId] != 0) {
+                    // deduct from parent balance
+                    ethStakedWithParent[_poolId][msg.sender].cBal -= _cAmount;
+                    parentPoolBal[parentId].cEthBal -= _cAmount;
+                }
                 payable(msg.sender).transfer(_cAmount);
             } else if (_cAmount == 0 && _hAmount > 0) {
                 // Heated, No Cooled

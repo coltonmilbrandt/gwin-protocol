@@ -113,31 +113,31 @@ def test_use_protocol():
     assert rnd(rounded(gwin_protocol.retrieveProtocolHEthBalance.call(pool_10x_id, {"from": account}))) == rnd(2_1782178217) # hEth in protocol
 
     # Owner 
-    assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(0, account.address, {"from": account}))) == rnd(9_2071829835) # cEth for account 
-    assert rnd(roundedDec(gwin_protocol.retrieveCEthPercentBalance.call(0, account.address, {"from": account}))) == rnd(roundedDec(77_7840370473)) # cEth % for account
-    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(0, account.address, {"from": account}))) == rnd(10_9343153658) # hEth for account
-    assert rnd(gwin_protocol.retrieveHEthPercentBalance.call(0, account.address, {"from": account})) == rnd(81_1503450003) # hEth % for account 
+    assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(pool_2x_id, account.address, {"from": account}))) == rnd(0) # cEth for account 
+    assert rnd(roundedDec(gwin_protocol.retrieveCEthPercentBalance.call(pool_2x_id, account.address, {"from": account}))) == rnd(roundedDec(0)) # cEth % for account
+    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(pool_2x_id, account.address, {"from": account}))) == rnd(10_0990099009) # hEth for account
+    assert rnd(roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(pool_2x_id, account.address, {"from": account}))) == rnd(roundedDec(90_9901873327)) # hEth % for account 
 
     # Alice
-    assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(0, non_owner.address, {"from": account}))) == rnd(0) # cEth for non_owner
-    assert gwin_protocol.retrieveCEthPercentBalance.call(0, non_owner.address, {"from": account}) == 0 # cEth % non_owner
-    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner.address, {"from": account}))) == rnd(0) # hEth for non_owner
-    assert gwin_protocol.retrieveHEthPercentBalance.call(0, non_owner.address, {"from": account}) == 0 # hEth % for non_owner
+    assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(pool_2x_id, non_owner.address, {"from": account}))) == rnd(0) # cEth for non_owner
+    assert gwin_protocol.retrieveCEthPercentBalance.call(pool_2x_id, non_owner.address, {"from": account}) == 0 # cEth % non_owner
+    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(pool_2x_id, non_owner.address, {"from": account}))) == rnd(1_0000000000) # hEth for non_owner
+    assert rnd(roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(pool_2x_id, non_owner.address, {"from": account}))) == rnd(roundedDec(9_0098126672)) # hEth % for non_owner
 
     # Bob
-    assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(0, non_owner_two.address, {"from": account}))) == rnd(0) # cEth for non_owner_two 
-    assert gwin_protocol.retrieveCEthPercentBalance.call(0, non_owner_two.address, {"from": account}) == 0 # cEth % for non_owner_two
-    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner_two.address, {"from": account}))) == rnd(0) # hEth for non_owner_two
-    assert roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(0, non_owner_two.address, {"from": account})) == 0 # hEth % for non_owner_two     
+    assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(pool_2x_id, non_owner_two.address, {"from": account}))) == rnd(0) # cEth for non_owner_two 
+    assert gwin_protocol.retrieveCEthPercentBalance.call(pool_2x_id, non_owner_two.address, {"from": account}) == 0 # cEth % for non_owner_two
+    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(pool_2x_id, non_owner_two.address, {"from": account}))) == rnd(0) # hEth for non_owner_two
+    assert roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(pool_2x_id, non_owner_two.address, {"from": account})) == 0 # hEth % for non_owner_two     
 
     # Chris
-    assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(0, non_owner_three.address, {"from": account}))) == rnd(0) # cEth for non_owner_three 
-    assert gwin_protocol.retrieveCEthPercentBalance.call(0, non_owner_three.address, {"from": account}) == 0 # cEth % for non_owner_three
-    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner_three.address, {"from": account}))) == rnd(2_0751174555) # hEth for non_owner_three
-    assert roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(0, non_owner_three.address, {"from": account})) == roundedDec(15_4007353730) # hEth % for non_owner_three
+    assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(pool_2x_id, non_owner_three.address, {"from": account}))) == rnd(0) # cEth for non_owner_three 
+    assert gwin_protocol.retrieveCEthPercentBalance.call(pool_2x_id, non_owner_three.address, {"from": account}) == 0 # cEth % for non_owner_three
+    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(pool_2x_id, non_owner_three.address, {"from": account}))) == rnd(0) # hEth for non_owner_three
+    assert roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(pool_2x_id, non_owner_three.address, {"from": account})) == roundedDec(0) # hEth % for non_owner_three
 
     # Dan
-    assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(0, non_owner_four.address, {"from": account}))) == rnd(2_6296711230) # cEth for non_owner_four 
-    assert rnd(gwin_protocol.retrieveCEthPercentBalance.call(0, non_owner_four.address, {"from": account})) == rnd(roundedDec(22_2159629526)) # cEth % for non_owner_four
-    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner_four.address, {"from": account}))) == rnd(4647124404) # hEth for non_owner_four
-    assert rnd(roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(0, non_owner_four.address, {"from": account}))) == rnd(roundedDec(34489196266)) # hEth % for non_owner_four
+    assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(pool_2x_id, non_owner_four.address, {"from": account}))) == rnd(0) # cEth for non_owner_four 
+    assert rnd(gwin_protocol.retrieveCEthPercentBalance.call(pool_2x_id, non_owner_four.address, {"from": account})) == rnd(roundedDec(0)) # cEth % for non_owner_four
+    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(pool_2x_id, non_owner_four.address, {"from": account}))) == rnd(0) # hEth for non_owner_four
+    assert rnd(roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(pool_2x_id, non_owner_four.address, {"from": account}))) == rnd(roundedDec(0)) # hEth % for non_owner_four
