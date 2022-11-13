@@ -1153,7 +1153,7 @@ def test_use_protocol():
     # Assert
     assert gwin_protocol.retrieveCurrentPrice(xau_ls_pool_id, {"from": account}) == 40000000
     # Act
-    ################### XAU tx5 ###################         Deposit
+    ################### XAU tx5 ###################         Withdrawal
     #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
     txFour = gwin_protocol.withdrawFromTranche(xau_ls_pool_id, True, False, Web3.toWei(1, "ether"), 0, False, {"from": account})
     txFour.wait(1)
