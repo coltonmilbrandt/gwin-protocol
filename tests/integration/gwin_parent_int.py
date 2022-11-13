@@ -141,3 +141,13 @@ def test_use_protocol():
     assert rnd(gwin_protocol.retrieveCEthPercentBalance.call(pool_2x_id, non_owner_four.address, {"from": account})) == rnd(roundedDec(0)) # cEth % for non_owner_four
     assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(pool_2x_id, non_owner_four.address, {"from": account}))) == rnd(0) # hEth for non_owner_four
     assert rnd(roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(pool_2x_id, non_owner_four.address, {"from": account}))) == rnd(roundedDec(0)) # hEth % for non_owner_four
+
+    # SHARED POOL BALANCES cEth
+    # Owner
+    assert rnd(rounded(gwin_protocol.getParentUserCEthBalance(pool_2x_id, account.address, {"from": account}))) == rnd(43_5643564356) # cEth user has in parent pool
+    assert rnd(roundedDec(gwin_protocol.getParentUserCEthPercent(pool_2x_id, account.address, {"from": account}))) == rnd(roundedDec(100_0000000000)) # cEth user has in parent pool
+
+    assert rnd(rounded(gwin_protocol.getParentUserCEthBalance(pool_2x_id, non_owner.address, {"from": account}))) == rnd(0) # cEth user has in parent pool
+    assert rnd(rounded(gwin_protocol.getParentUserCEthBalance(pool_2x_id, non_owner_two.address, {"from": account}))) == rnd(0) # cEth user has in parent pool
+    assert rnd(rounded(gwin_protocol.getParentUserCEthBalance(pool_2x_id, non_owner_three.address, {"from": account}))) == rnd(0) # cEth user has in parent pool
+    assert rnd(rounded(gwin_protocol.getParentUserCEthBalance(pool_2x_id, non_owner_four.address, {"from": account}))) == rnd(0) # cEth user has in parent pool

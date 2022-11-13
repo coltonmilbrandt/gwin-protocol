@@ -704,6 +704,24 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return pool[_poolId].cEthBal;
     }
 
+    function getParentUserCEthBalance(uint _poolId, address _user)
+        public
+        view
+        returns (uint)
+    {
+        uint parentId = parentPoolId[_poolId];
+        return ethStakedWithParent[parentId][_user].cBal;
+    }
+
+    function getParentUserCEthPercent(uint _poolId, address _user)
+        public
+        view
+        returns (uint)
+    {
+        uint parentId = parentPoolId[_poolId];
+        return ethStakedWithParent[parentId][_user].cPercent;
+    }
+
     function getParentPoolCEthBalance(uint _poolId) public view returns (uint) {
         uint parentId = parentPoolId[_poolId];
         return parentPoolBal[parentId].cEthBal;
