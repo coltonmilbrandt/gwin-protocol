@@ -216,7 +216,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                         cEthStakedToTargetedRatio) /
                     bps;
             } else {
-                uint cEthOverEven = parentPoolBal[parentId].cEthBal %
+                uint cEthOverEven = parentPoolBal[parentId].cEthBal -
                     cEthForBalance;
                 pool[poolIdIndex].cEthBal =
                     (pool[poolIdIndex].hEthBal * uint(cethPerHeth)) +
@@ -264,26 +264,36 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         reAdjust(_poolId, true, _isCooled, _isHeated);
         // Deposit ETH
         if (_isCooled == true && _isHeated == false) {
-            ethStakedBalance[_poolId][msg.sender].cBal += msg.value;
             pool[_poolId].cEthBal += msg.value;
             if (parentPoolId[_poolId] != 0) {
                 // add to parent balance
                 ethStakedWithParent[parentId][msg.sender].cBal += msg.value;
                 parentPoolBal[parentId].cEthBal += msg.value;
+            } else {
+                ethStakedBalance[_poolId][msg.sender].cBal += msg.value;
             }
         } else if (_isCooled == false && _isHeated == true) {
-            ethStakedBalance[_poolId][msg.sender].hBal += msg.value;
             pool[_poolId].hEthBal += msg.value;
+            ethStakedBalance[_poolId][msg.sender].hBal += msg.value;
+            if (parentPoolId[_poolId] != 0) {
+                // add to parent balance
+                parentPoolBal[parentId].hEthBal += msg.value;
+            }
         } else if (_isCooled == true && _isHeated == true) {
-            ethStakedBalance[_poolId][msg.sender].cBal += _cAmount;
             pool[_poolId].cEthBal += _cAmount;
             if (parentPoolId[_poolId] != 0) {
                 // add to parent balance
                 ethStakedWithParent[parentId][msg.sender].cBal += _cAmount;
                 parentPoolBal[parentId].cEthBal += _cAmount;
+            } else {
+                ethStakedBalance[_poolId][msg.sender].cBal += _cAmount;
             }
             ethStakedBalance[_poolId][msg.sender].hBal += _hAmount;
             pool[_poolId].hEthBal += _hAmount;
+            if (parentPoolId[_poolId] != 0) {
+                // add to parent balance
+                parentPoolBal[parentId].hEthBal += _hAmount;
+            }
         }
         if (isUniqueEthStaker[_poolId][msg.sender] == false) {
             ethStakers[_poolId].push(msg.sender);
@@ -291,8 +301,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
         // Re-Adjust user percentages
         reAdjust(_poolId, false, _isCooled, _isHeated);
+        reAdjustChildPools(_poolId);
 
-        pool[_poolId].lastSettledUsdPrice = pool[_poolId].currentUsdPrice;
+        // TEMP??
+        // pool[_poolId].lastSettledUsdPrice = pool[_poolId].currentUsdPrice;
     }
 
     /// PREVIEW-USER-BALANCE /// - preview balance at the current ETH/USD price
@@ -338,6 +350,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         if (_isAll == true) {
             if (_isCooled == true) {
                 _cAmount = ethStakedBalance[_poolId][msg.sender].cBal;
+                // this needs updated for parent pools @dev FIX update
             }
             if (_isHeated == true) {
                 _hAmount = ethStakedBalance[_poolId][msg.sender].hBal;
@@ -353,30 +366,38 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         // Withdraw ETH
         if (_cAmount > 0 && _hAmount > 0) {
             // Cooled and Heated
-            ethStakedBalance[_poolId][msg.sender].cBal -= _cAmount;
             pool[_poolId].cEthBal -= _cAmount;
             if (parentPoolId[_poolId] != 0) {
                 // deduct from parent balance
                 ethStakedWithParent[_poolId][msg.sender].cBal -= _cAmount;
                 parentPoolBal[parentId].cEthBal -= _cAmount;
+            } else {
+                ethStakedBalance[_poolId][msg.sender].cBal -= _cAmount;
             }
             ethStakedBalance[_poolId][msg.sender].hBal -= _hAmount;
+            if (parentPoolId[_poolId] != 0) {
+                parentPoolBal[parentId].hEthBal -= _hAmount;
+            }
             pool[_poolId].hEthBal -= _hAmount;
             payable(msg.sender).transfer(_cAmount + _hAmount);
         } else {
             if (_cAmount > 0 && _hAmount == 0) {
                 // Cooled, No Heated
-                ethStakedBalance[_poolId][msg.sender].cBal -= _cAmount;
                 pool[_poolId].cEthBal -= _cAmount;
                 if (parentPoolId[_poolId] != 0) {
                     // deduct from parent balance
                     ethStakedWithParent[_poolId][msg.sender].cBal -= _cAmount;
                     parentPoolBal[parentId].cEthBal -= _cAmount;
+                } else {
+                    ethStakedBalance[_poolId][msg.sender].cBal -= _cAmount;
                 }
                 payable(msg.sender).transfer(_cAmount);
             } else if (_cAmount == 0 && _hAmount > 0) {
                 // Heated, No Cooled
                 ethStakedBalance[_poolId][msg.sender].hBal -= _hAmount;
+                if (parentPoolId[_poolId] != 0) {
+                    parentPoolBal[parentId].hEthBal -= _hAmount;
+                }
                 pool[_poolId].hEthBal -= _hAmount;
                 payable(msg.sender).transfer(_hAmount);
             }
@@ -417,7 +438,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             }
             parentPoolBal[parentId].cEthBal = cEthInChildPools;
             parentPoolBal[parentId].hEthBal = hEthInChildPools;
-            reAdjustChildPools(poolId);
+            // reAdjustChildPools(poolId);
         }
     }
 
@@ -685,7 +706,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         view
         returns (uint)
     {
-        return ethStakedBalance[_poolId][_user].hBal;
+        uint perc = retrieveHEthPercentBalance(_poolId, _user);
+        uint bal = retrieveProtocolHEthBalance(_poolId);
+        return (bal * perc) / bps;
     }
 
     function retrieveAddressAtIndex(uint _poolId, uint _index)
@@ -970,12 +993,27 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ) + _cooledChange) / int(decimals)) + _cooledAllocation;
         int256 heatedBalAfterAllocation = int(totalLockedUsd) - // heated USD balance in usdDecimal terms
             cooledBalAfterAllocation;
+        int cEthBalLast = int(pool[_poolId].cEthBal);
+        int hEthBalLast = int(pool[_poolId].hEthBal);
         pool[_poolId].cEthBal =
             (uint(cooledBalAfterAllocation) * decimals) /
             _currentAssetUsd; // new cEth Balance in Wei
         pool[_poolId].hEthBal =
             (uint(heatedBalAfterAllocation) * decimals) /
             _currentAssetUsd; // new hEth Balance in Wei
+        if (parentPoolId[_poolId] != 0) {
+            parentPoolBal[_poolId].cEthBal = uint(
+                int(parentPoolBal[_poolId].cEthBal) +
+                    int(pool[_poolId].cEthBal) -
+                    cEthBalLast
+            );
+            parentPoolBal[_poolId].hEthBal = uint(
+                int(parentPoolBal[_poolId].hEthBal) +
+                    int(pool[_poolId].hEthBal) -
+                    hEthBalLast
+            );
+        }
+        pool[_poolId].lastSettledUsdPrice = pool[_poolId].currentUsdPrice;
     }
 
     /// ABSOLUTE-VALUE /// - returns the absolute value of an int
