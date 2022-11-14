@@ -101,7 +101,7 @@ def test_use_protocol():
 
     assert rounded(gwin_protocol.retrieveCEthBalance.call(0, non_owner_two.address, {"from": account})) == 0 # cEth for non_owner_two 
     assert gwin_protocol.retrieveCEthPercentBalance.call(0, non_owner_two.address, {"from": account}) == 0 # cEth % for non_owner_two
-    assert rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner_two.address, {"from": account})) == 1_0000000000 # hEth for non_owner_two
+    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner_two.address, {"from": account}))) == rnd(1_0000000000) # hEth for non_owner_two
     assert gwin_protocol.retrieveHEthPercentBalance.call(0, non_owner_two.address, {"from": account}) == 7_9474972592 # hEth % for non_owner_two 
 
 
@@ -172,13 +172,13 @@ def test_use_protocol():
     # Bob
     assert rounded(gwin_protocol.retrieveCEthBalance.call(0, non_owner_two.address, {"from": account})) == 0 # cEth for non_owner_two 
     assert gwin_protocol.retrieveCEthPercentBalance.call(0, non_owner_two.address, {"from": account}) == 0 # cEth % for non_owner_two
-    assert rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner_two.address, {"from": account})) == 9098581587 # hEth for non_owner_two
+    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner_two.address, {"from": account}))) == rnd(9098581587) # hEth for non_owner_two
     assert roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(0, non_owner_two.address, {"from": account})) == 6_7655692320 # hEth % for non_owner_two     
 
     # Chris
     assert rounded(gwin_protocol.retrieveCEthBalance.call(0, non_owner_three.address, {"from": account})) == 0 # cEth for non_owner_three 
     assert gwin_protocol.retrieveCEthPercentBalance.call(0, non_owner_three.address, {"from": account}) == 0 # cEth % for non_owner_three
-    assert rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner_three.address, {"from": account})) == 2_0000000000 # hEth for non_owner_three
+    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner_three.address, {"from": account}))) == rnd(2_0000000000) # hEth for non_owner_three
     assert roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(0, non_owner_three.address, {"from": account})) == 14_8717009730 # hEth % for non_owner_three
 
 
@@ -213,7 +213,7 @@ def test_use_protocol():
     # Alice
     assert rounded(gwin_protocol.retrieveCEthBalance.call(0, non_owner.address, {"from": account})) == 3_0000000000 # cEth for non_owner
     assert gwin_protocol.retrieveCEthPercentBalance.call(0, non_owner.address, {"from": account}) == 23_3427598443 # cEth % non_owner
-    assert rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner.address, {"from": account})) == 1_0000000000 # hEth for non_owner
+    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner.address, {"from": account}))) == rnd(1_0000000000) # hEth for non_owner
     assert gwin_protocol.retrieveHEthPercentBalance.call(0, non_owner.address, {"from": account}) == 7_0525492967 # hEth % for non_owner
 
     # Bob
@@ -541,15 +541,15 @@ def test_use_protocol():
     # Act                                                       "ETH/USD"                               "XAU/USD"
     gwin_protocol.initializePool(1, parent_id, eth_usd_price_feed.address, "0x455448", xau_usd_price_feed.address, "0x584155", -100_0000000000, 100_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
     # Assert
-    xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account}) # TEMP
+    xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account}) 
     assert gwin_protocol.retrieveProtocolCEthBalance.call(1, {"from": account}) == 10000000000000000000 # cEth in protocol
     assert gwin_protocol.retrieveProtocolHEthBalance.call(1, {"from": account}) == 10000000000000000000 # hEth in protocol
     assert gwin_protocol.retrieveCEthPercentBalance.call(1, account.address, {"from": account}) == 1000000000000 # cEth % for account
     assert gwin_protocol.retrieveHEthPercentBalance.call(1, account.address, {"from": account}) == 1000000000000 # hEth % for account
     assert gwin_protocol.retrieveCEthBalance.call(1, account.address, {"from": account}) == 10000000000000000000 # cEth for account
     assert gwin_protocol.retrieveHEthBalance.call(1, account.address, {"from": account}) == 10000000000000000000 # hEth for account
-    assert xau_usd_price_feed.decimals() == 18 # TEMP
-    assert gwin_protocol.retrieveCurrentPrice(1, {"from": account}) == 81250000 # TEMP
+    assert xau_usd_price_feed.decimals() == 18 
+    assert gwin_protocol.retrieveCurrentPrice(1, {"from": account}) == 81250000 
 
     ################### XAU Set Up for tx1 ###################        
 
@@ -870,7 +870,7 @@ def test_use_protocol():
 
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\  XAU Long Short (-200, 400)  /@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
     xau_ls_pool_id = 2
-    xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account}) # TEMP
+    xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account}) 
     eth_usd_price_feed.updateAnswer(feed_eth, {"from": account})
     assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1300_00000000
 
@@ -884,8 +884,8 @@ def test_use_protocol():
     assert gwin_protocol.retrieveHEthPercentBalance.call(xau_ls_pool_id, account.address, {"from": account}) == 1000000000000 # hEth % for account
     assert gwin_protocol.retrieveCEthBalance.call(xau_ls_pool_id, account.address, {"from": account}) == 10000000000000000000 # cEth for account
     assert gwin_protocol.retrieveHEthBalance.call(xau_ls_pool_id, account.address, {"from": account}) == 10000000000000000000 # hEth for account
-    assert xau_usd_price_feed.decimals() == 18 # TEMP
-    assert gwin_protocol.retrieveCurrentPrice(xau_ls_pool_id, {"from": account}) == 81250000 # TEMP
+    assert xau_usd_price_feed.decimals() == 18 
+    assert gwin_protocol.retrieveCurrentPrice(xau_ls_pool_id, {"from": account}) == 81250000 
 
     ################### XAU Set Up for tx1 ###################        
 

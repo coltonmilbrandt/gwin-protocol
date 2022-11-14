@@ -579,8 +579,8 @@ def test_initialize_xau_pool():
     non_owner = get_account(index=1)
     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
     eth_usd_price_feed.updateAnswer(1300_00000000, {"from": account})
-    xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account}) # TEMP
-    assert xau_usd_price_feed.decimals() == 18 # TEMP
+    xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account}) 
+    assert xau_usd_price_feed.decimals() == 18 
     # Act                                                       "ETH/USD"                               "XAU/USD"
     gwin_protocol.initializePool(1, eth_usd_price_feed.address, "0x455448", xau_usd_price_feed.address, "0x584155", -100_0000000000, 100_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
     # Assert
@@ -591,7 +591,7 @@ def test_initialize_xau_pool():
     assert gwin_protocol.retrieveCEthBalance.call(0, account.address, {"from": account}) == 10000000000000000000 # cEth for account
     assert gwin_protocol.retrieveHEthBalance.call(0, account.address, {"from": account}) == 10000000000000000000 # hEth for account
     
-    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 81250000 # TEMP
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 81250000 
 
     target_price = 0.85
     stable_eth = 1300
@@ -620,9 +620,9 @@ def test_initialize_xau_pool():
     account = get_account()
     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
     feed_eth = 1300_00000000
-    assert xau_usd_price_feed.decimals() == 18 # TEMP
+    assert xau_usd_price_feed.decimals() == 18 
     xau_ls_pool_id = 0
-    xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account}) # TEMP
+    xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account}) 
     eth_usd_price_feed.updateAnswer(feed_eth, {"from": account})
 
     parent_id = 0
@@ -635,8 +635,8 @@ def test_initialize_xau_pool():
     assert gwin_protocol.retrieveHEthPercentBalance.call(xau_ls_pool_id, account.address, {"from": account}) == 1000000000000 # hEth % for account
     assert gwin_protocol.retrieveCEthBalance.call(xau_ls_pool_id, account.address, {"from": account}) == 10000000000000000000 # cEth for account
     assert gwin_protocol.retrieveHEthBalance.call(xau_ls_pool_id, account.address, {"from": account}) == 10000000000000000000 # hEth for account
-    assert xau_usd_price_feed.decimals() == 18 # TEMP
-    assert gwin_protocol.retrieveCurrentPrice(xau_ls_pool_id, {"from": account}) == 81250000 # TEMP
+    assert xau_usd_price_feed.decimals() == 18 
+    assert gwin_protocol.retrieveCurrentPrice(xau_ls_pool_id, {"from": account}) == 81250000
 
     ################### XAU Set Up ###################        
 

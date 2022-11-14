@@ -89,8 +89,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint8 poolType; // as in classic or modified
     }
 
-    // Potential ISSUE if these can be changed, but I doubt that's the case
-
     // Storing the GWIN token as a global variable, IERC20 imported above, address passed into constructor
     IERC20 public gwinToken;
 
@@ -129,16 +127,22 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         pool[newPoolId].quotePriceFeedKey = _quoteCurrencyKey;
         uint hDepositAmount;
         uint cDepositAmount;
+        // if modified type (i.e. "1")
+        if (_type != 0) {
+            cDepositAmount = msg.value / 2;
+            hDepositAmount = msg.value / 2;
+        } else {
+            // if classic type (i.e. "0")
+            int cEthPercent = (abs(_hRate) * int(bps)) /
+                (abs(_hRate) + abs(_cRate));
+            cDepositAmount = (msg.value * uint(cEthPercent)) / bps;
+            hDepositAmount = msg.value - cDepositAmount;
+        }
         // cEth percent of total
-        int cEthPercent = (abs(_hRate) * int(bps)) /
-            (abs(_hRate) + abs(_cRate));
-        cDepositAmount = (msg.value * uint(cEthPercent)) / bps;
-        hDepositAmount = msg.value - cDepositAmount;
-        // }
         ethStakedBalance[newPoolId][msg.sender].hBal += hDepositAmount;
         ethStakedBalance[newPoolId][msg.sender].hPercent = bps;
         pool[newPoolId].hEthBal = hDepositAmount;
-        pool[newPoolId].cEthBal = cDepositAmount; // temp move??
+        pool[newPoolId].cEthBal = cDepositAmount;
         parentPoolId[newPoolId] = _parentId;
         addAggregator(_baseCurrencyKey, _basePriceFeedAddress);
         if (_quotePriceFeedAddress != address(0x0)) {
@@ -149,13 +153,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         if (_parentId != 0) {
             // set parent pool balances and weights
             parentPoolBal[_parentId].childPoolIds.push(newPoolId);
-            // @DEV do we need to rebalance prior to adding to parent bal! probably...
-            if (parentPoolBal[_parentId].childPoolIds.length > 1) {
-                // Interact to rebalance Tranches with new price
-                // interactByPool(newPoolId); //temp
-                // Re-adjust to update balances after price change
-                // reAdjust(newPoolId, true, true, false); //temp
-            }
             parentPoolBal[_parentId].cEthBal += cDepositAmount;
             parentPoolBal[_parentId].hEthBal += hDepositAmount;
             ethStakedWithParent[_parentId][msg.sender].cBal += cDepositAmount;
@@ -164,7 +161,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 parentPoolBal[_parentId].cEthBal;
             if (parentPoolBal[_parentId].childPoolIds.length > 1) {
                 // Re-Adjust user percentages
-                reAdjust(newPoolId, false, true, false); //temp????
+                reAdjust(newPoolId, false, true, false); //temp???
                 // Balance allocations to child pools
                 // TEMP : don't think this is needed here, as it is called in interactByPool()
                 reAdjustChildPools(newPoolId);
