@@ -3,6 +3,9 @@ from brownie import GwinToken, GwinProtocol, network, config
 from scripts.helpful_scripts import deploy_mocks, get_account, get_contract, fund_with_link, LOCAL_BLOCKCHAIN_ENVIRONMENTS, TEST_BLOCKCHAIN_ENVIRONMENTS, NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
 from web3 import Web3
 
+# NOTE: The build folder must be deleted when new chain is initialized
+# this is temporary, easy to work around, and will be fixed when there is time
+
 KEPT_BALANCE = Web3.toWei(100, "ether")
 
 def deploy_gwin_protocol_and_gwin_token():
@@ -30,8 +33,10 @@ def deploy_gwin_protocol_and_gwin_token():
     tx1 = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
     tx1.wait(1)
 
-    # if network.show_active() in TEST_BLOCKCHAIN_ENVIRONMENTS:
-    if network.show_active() in NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+    # Change to True to deploy pools to network, change to False if running testing scripts
+    deploy_pools = False
+
+    if deploy_pools == True:
         #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\  ETH/USD 2x Long Stable Pool (-100, 200)  /@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
         pool_id = 0
         parent_id = 1
@@ -47,8 +52,14 @@ def deploy_gwin_protocol_and_gwin_token():
         pool_id = pool_id + 1
         print("hEth Bal: ")
         print(hEth_bal)
-        print(f"cEth Bal: ")
+        print("cEth Bal: ")
         print(cEth_bal)
+        print("parentID: ")
+        print(parent_id)
+        print("type: ")
+        print(pool_type)
+        contract_name = "eth_usd_price_feed"
+        print(f"Goerli Price Feed Address 1: " + config["networks"]["goerli"][contract_name])
 
         #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\  ETH/USD 5x Long Stable Pool (-100, 400)  /@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
 
@@ -64,8 +75,14 @@ def deploy_gwin_protocol_and_gwin_token():
         pool_id = pool_id + 1
         print("hEth Bal: ")
         print(hEth_bal)
-        print(f"cEth Bal: ")
+        print("cEth Bal: ")
         print(cEth_bal)
+        print("parentID: ")
+        print(parent_id)
+        print("type: ")
+        print(pool_type)
+        contract_name = "eth_usd_price_feed"
+        print(f"Goerli Price Feed Address 1: " + config["networks"]["goerli"][contract_name])
 
         #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\  ETH/USD 10x Long Stable Pool (-100, 900)  /@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
 
@@ -81,8 +98,14 @@ def deploy_gwin_protocol_and_gwin_token():
         pool_id = pool_id + 1
         print("hEth Bal: ")
         print(hEth_bal)
-        print(f"cEth Bal: ")
+        print("cEth Bal: ")
         print(cEth_bal)
+        print("parentID: ")
+        print(parent_id)
+        print("type: ")
+        print(pool_type)
+        contract_name = "eth_usd_price_feed"
+        print(f"Goerli Price Feed Address 1: " + config["networks"]["goerli"][contract_name])
 
         #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\  ETH/XAU Short Stable (-100, 100)  /@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
 
@@ -97,8 +120,14 @@ def deploy_gwin_protocol_and_gwin_token():
         pool_id = pool_id + 1
         print("hEth Bal: ")
         print(hEth_bal)
-        print(f"cEth Bal: ")
+        print("cEth Bal: ")
         print(cEth_bal)
+        print("parentID: ")
+        print(parent_id)
+        contract_name = "eth_usd_price_feed"
+        print(f"Goerli Price Feed Address 1: " + config["networks"]["goerli"][contract_name])
+        contract_two_name = "xau_usd_price_feed"
+        print(f"Goerli Price Feed Address 2: " + config["networks"]["goerli"][contract_two_name])
 
         #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\  ETH/XAU Long Short (-200, 400)  /@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
         
@@ -113,8 +142,14 @@ def deploy_gwin_protocol_and_gwin_token():
         pool_id = pool_id + 1
         print("hEth Bal: ")
         print(hEth_bal)
-        print(f"cEth Bal: ")
+        print("cEth Bal: ")
         print(cEth_bal)
+        print("parentID: ")
+        print(parent_id)
+        contract_name = "eth_usd_price_feed"
+        print(f"Goerli Price Feed Address 1: " + config["networks"]["goerli"][contract_name])
+        contract_two_name = "xau_usd_price_feed"
+        print(f"Goerli Price Feed Address 2: " + config["networks"]["goerli"][contract_two_name])
 
         #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\  ETH/BTC Short Stable (-100, 100)  /@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
 
@@ -129,8 +164,14 @@ def deploy_gwin_protocol_and_gwin_token():
         pool_id = pool_id + 1
         print("hEth Bal: ")
         print(hEth_bal)
-        print(f"cEth Bal: ")
+        print("cEth Bal: ")
         print(cEth_bal)
+        print("parentID: ")
+        print(parent_id)
+        contract_name = "eth_usd_price_feed"
+        print(f"Goerli Price Feed Address 1: " + config["networks"]["goerli"][contract_name])
+        contract_two_name = "btc_usd_price_feed"
+        print(f"Goerli Price Feed Address 2: " + config["networks"]["goerli"][contract_two_name])
 
         #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\  ETH/JPY Long Short (-200, 400)  /@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
         
@@ -142,11 +183,23 @@ def deploy_gwin_protocol_and_gwin_token():
         print(f"eth USD price feed: " + eth_usd_price_feed.address)
         print(f"JPY USD price feed: " + jpy_usd_price_feed.address)
         hEth_bal, cEth_bal = gwin_protocol.previewPoolBalances.call(pool_id)
-        pool_id = pool_id + 1
         print("hEth Bal: ")
         print(hEth_bal)
-        print(f"cEth Bal: ")
+        print("cEth Bal: ")
         print(cEth_bal)
+        print("parentID: ")
+        print(parent_id)
+        hEth_bal_settled = gwin_protocol.retrieveProtocolHEthBalance.call(pool_id)
+        cEth_bal_settled = gwin_protocol.retrieveProtocolCEthBalance.call(pool_id)
+        print("settled hEth Bal: ")
+        print(hEth_bal_settled)
+        print("settled cEth Bal: ")
+        print(cEth_bal_settled)
+        contract_name = "eth_usd_price_feed"
+        print(f"Goerli Price Feed Address 1: " + config["networks"]["goerli"][contract_name])
+        contract_two_name = "jpy_usd_price_feed"
+        print(f"Goerli Price Feed Address 2: " + config["networks"]["goerli"][contract_two_name])
+        pool_id = pool_id + 1
 
     return gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed
 

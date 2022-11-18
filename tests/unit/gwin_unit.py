@@ -7,8 +7,10 @@ from scripts.deploy import deploy_gwin_protocol_and_gwin_token
 from web3 import Web3
 import pytest
 
-# NOTE: The build folder must be deleted when new ganache chain initialized
-# this is temporary and needs to be fixed when there is time
+# NOTE: The build folder must be deleted when new chain is initialized
+# this is temporary, easy to work around, and will be fixed when there is time
+
+# NOTE 2: Be sure to set the deploy_pools variable to FALSE in deploy.py before running tests
 
 def test_get_account():
     account = get_account()

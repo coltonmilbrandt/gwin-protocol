@@ -791,7 +791,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         );
     }
 
-    /////// PREVIEW FUNCTION ///////  --  get current values rather than last settled values
+    /////// PREVIEW FUNCTIONS ///////  --  get current values rather than last settled values
 
     // USER - cEth balance preview at current price
     function previewUserCEthBalance(uint _poolId, address _user)
