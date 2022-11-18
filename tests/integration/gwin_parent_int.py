@@ -6,6 +6,9 @@ from scripts.deploy import deploy_gwin_protocol_and_gwin_token
 from web3 import Web3
 import pytest
 
+# NOTE: The build folder must be deleted when new ganache chain initialized
+# this is temporary and needs to be fixed when there is time
+
 def test_use_protocol():
     # Arrange
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
@@ -162,6 +165,61 @@ def test_use_protocol():
     # Assert
     assert gwin_protocol.retrieveCurrentPrice(pool_2x_id, {"from": account}) == 960_00000000
 
+
+    # Act -- test if preview shows correct balance before transaction
+    hEthEst, cEthEst = gwin_protocol.previewPoolBalances.call(pool_2x_id, {"from": account})
+    # Assert
+    assert rnd(rounded(cEthEst)) == rnd(10_7705207324) # this is before deposit
+    assert rnd(rounded(hEthEst)) == rnd(10_5430140722)
+
+    # Act -- test if preview shows correct balance before transaction with price inputed
+    hEthEst, cEthEst = gwin_protocol.previewPoolBalancesAtPrice.call(pool_2x_id, 960_00000000, {"from": account})
+    # Assert
+    assert rnd(rounded(cEthEst)) == rnd(10_7705207324) # this is before deposit
+    assert rnd(rounded(hEthEst)) == rnd(10_5430140722)
+
+    # Act -- test if preview shows correct hEth balance before transaction
+    userHEthEst = gwin_protocol.previewUserHEthBalance.call(pool_2x_id, account.address, {"from": account})
+    # Assert
+    assert rnd(rounded(userHEthEst)) == rnd(9_5931082548) # this is before deposit
+
+    # Act -- test if preview shows correct hEth balance before transaction with price inputed
+    userHEthEst = gwin_protocol.previewUserHEthBalanceAtPrice.call(pool_2x_id, 960_00000000, account.address, {"from": account})
+    # Assert
+    assert rnd(rounded(userHEthEst)) == rnd(9_5931082548) # this is before deposit
+
+    # Act -- test if preview shows correct hEth balance before transaction
+    userHEthEst = gwin_protocol.previewUserHEthBalance.call(pool_2x_id, non_owner.address, {"from": account})
+    # Assert
+    assert rnd(rounded(userHEthEst)) == rnd(9499058173) # this is before deposit
+
+    # Act -- test if preview shows correct hEth balance before transaction with price inputed
+    userHEthEst = gwin_protocol.previewUserHEthBalanceAtPrice.call(pool_2x_id, 960_00000000, non_owner.address, {"from": account})
+    # Assert
+    assert rnd(rounded(userHEthEst)) == rnd(9499058173) # this is before deposit
+
+    # Act -- test if preview shows correct hEth balance before transaction
+    userHEthEst = gwin_protocol.previewUserHEthBalance.call(pool_5x_id, account.address, {"from": account})
+    # Assert
+    assert rnd(rounded(userHEthEst)) == rnd(3_3463699892) # this is before deposit
+
+    # Act -- test if preview shows correct hEth balance before transaction with price inputed
+    userHEthEst = gwin_protocol.previewUserHEthBalanceAtPrice.call(pool_5x_id, 960_00000000, account.address, {"from": account})
+    # Assert
+    assert rnd(rounded(userHEthEst)) == rnd(3_3463699892) # this is before deposit
+
+    # Act -- test if preview shows correct hEth balance before transaction
+    userCEthEst = gwin_protocol.previewParentUserCEthBalance.call(pool_2x_id, account.address, {"from": account})
+    # Assert
+    assert rnd(rounded(userCEthEst)) == rnd(45_8808359986) # this is before deposit
+
+    # Act -- test if preview shows correct cEth balance before transaction with price inputed
+    userCEthEst = gwin_protocol.previewParentUserCEthBalanceAtPrice.call(pool_2x_id, 960_00000000, account.address, {"from": account})
+    # Assert
+    assert rnd(rounded(userCEthEst)) == rnd(45_8808359986) # this is before deposit
+
+
+
     # Act
     #              DEPOSIT                        isCooled, isHeated, cAmount, hAmount {from, msg.value}
     tx = gwin_protocol.depositToTranche(pool_2x_id, True, False, Web3.toWei(1, "ether"), 0, {"from": non_owner, "value": Web3.toWei(1, "ether")})
@@ -249,6 +307,17 @@ def test_use_protocol():
     eth_usd_price_feed.updateAnswer(979_20000000, {"from": account})
     # Assert
     assert gwin_protocol.retrieveCurrentPrice(pool_2x_id, {"from": account}) == 979_20000000
+
+
+    # Act -- test if preview shows correct hEth balance before transaction
+    userCEthEst = gwin_protocol.previewParentUserCEthBalance.call(pool_2x_id, non_owner.address, {"from": account})
+    # Assert
+    assert rnd(rounded(userCEthEst)) == rnd(9814828225) # this is before deposit
+
+    # Act -- test if preview shows correct cEth balance before transaction with price inputed
+    userCEthEst = gwin_protocol.previewParentUserCEthBalanceAtPrice.call(pool_2x_id, 979_20000000, non_owner.address, {"from": account})
+    # Assert
+    assert rnd(rounded(userCEthEst)) == rnd(9814828225) # this is before deposit
 
     # Act
     #              WITHDRAWAL                        isCooled, isHeated, cAmount, hAmount {from, msg.value}

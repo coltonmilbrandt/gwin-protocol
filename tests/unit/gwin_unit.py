@@ -7,6 +7,9 @@ from scripts.deploy import deploy_gwin_protocol_and_gwin_token
 from web3 import Web3
 import pytest
 
+# NOTE: The build folder must be deleted when new ganache chain initialized
+# this is temporary and needs to be fixed when there is time
+
 def test_get_account():
     account = get_account()
     assert account
