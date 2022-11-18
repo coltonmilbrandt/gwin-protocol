@@ -773,6 +773,141 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         );
     }
 
+    // USER - preview CEth balance at current price
+    function previewUserCEthBalance(uint _poolId, address _user)
+        public
+        view
+        returns (uint)
+    {
+        uint userCooledBal;
+        userCooledBal = previewUserCEthBalanceAtPrice(
+            _poolId,
+            retrieveCurrentPrice(_poolId),
+            _user
+        );
+        return userCooledBal;
+    }
+
+    // USER - preview cEth balance at selected price
+    function previewUserCEthBalanceAtPrice(
+        uint _poolId,
+        uint _price,
+        address _user
+    ) public view returns (uint) {
+        uint hEthBalEst;
+        uint cEthBalEst;
+        (hEthBalEst, cEthBalEst) = previewPoolBalancesAtPrice(_poolId, _price);
+        // Percents provide accurate balance
+        uint perc = retrieveCEthPercentBalance(_poolId, _user);
+        uint bal = cEthBalEst;
+        return (bal * perc) / bps;
+    }
+
+    // USER - preview hEth balance at current price
+    function previewUserHEthBalance(uint _poolId, address _user)
+        public
+        view
+        returns (uint)
+    {
+        uint userHeatedBal;
+        userHeatedBal = previewUserHEthBalanceAtPrice(
+            _poolId,
+            retrieveCurrentPrice(_poolId),
+            _user
+        );
+        return userHeatedBal;
+    }
+
+    // USER - preview cEth balance at current price
+    function previewParentUserCEthBalance(uint _poolId, address _user)
+        public
+        view
+        returns (uint)
+    {
+        uint userCooledBal;
+        userCooledBal = previewParentUserCEthBalanceAtPrice(
+            _poolId,
+            retrieveCurrentPrice(_poolId),
+            _user
+        );
+        return userCooledBal;
+    }
+
+    // USER - preview hEth balance at selected price
+    function previewUserHEthBalanceAtPrice(
+        uint _poolId,
+        uint _price,
+        address _user
+    ) public view returns (uint) {
+        uint hEthBalEst;
+        uint cEthBalEst;
+        (hEthBalEst, cEthBalEst) = previewPoolBalancesAtPrice(_poolId, _price);
+        // Percents provide accurate balance
+        uint perc = retrieveHEthPercentBalance(_poolId, _user);
+        uint bal = hEthBalEst;
+        return (bal * perc) / bps;
+    }
+
+    // USER - preview cEth balance at selected price
+    function previewParentUserCEthBalanceAtPrice(
+        uint _poolId,
+        uint _price,
+        address _user
+    ) public view returns (uint) {
+        uint perc = getParentUserCEthPercent(_poolId, _user);
+        uint bal = getEstCEthInParentPool(_poolId, _price);
+        return (bal * perc) / bps;
+    }
+
+    // PARENT POOL - preview cEth balance
+    function getEstCEthInParentPool(uint _poolId, uint _price)
+        public
+        view
+        returns (uint)
+    {
+        uint parentId = parentPoolId[_poolId];
+        uint cEthInChildPoolsEst;
+        for (
+            uint256 i = 0;
+            i < parentPoolBal[parentId].childPoolIds.length;
+            i++
+        ) {
+            uint poolIdIndex = parentPoolBal[parentId].childPoolIds[i];
+            uint hEthBalEst;
+            uint cEthBalEst;
+            (hEthBalEst, cEthBalEst) = simulateInteract(poolIdIndex, _price);
+            cEthInChildPoolsEst += cEthBalEst; // add to total cEth in child pools
+        }
+        return cEthInChildPoolsEst;
+    }
+
+    // POOL - preview hEth/cEth balances at current price
+    function previewPoolBalances(uint _poolId)
+        public
+        view
+        returns (uint, uint)
+    {
+        uint hEthBalEst;
+        uint cEthBalEst;
+        (hEthBalEst, cEthBalEst) = previewPoolBalancesAtPrice(
+            _poolId,
+            retrieveCurrentPrice(_poolId)
+        );
+        return (hEthBalEst, cEthBalEst);
+    }
+
+    // POOL - preview hEth/cEth balances at selected price
+    function previewPoolBalancesAtPrice(uint _poolId, uint _price)
+        public
+        view
+        returns (uint, uint)
+    {
+        uint hEthBalEst;
+        uint cEthBalEst;
+        (hEthBalEst, cEthBalEst) = simulateInteract(_poolId, _price);
+        return (hEthBalEst, cEthBalEst);
+    }
+
     /// STAKE-TOKENS /// - for future use with ERC-20s
     function stakeTokens(uint256 _amount, address _token) public {
         // Make sure that the amount to stake is more than 0
@@ -985,26 +1120,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ) + _cooledChange) / int(decimals)) + _cooledAllocation;
         int256 heatedBalAfterAllocation = int(totalLockedUsd) - // heated USD balance in usdDecimal terms
             cooledBalAfterAllocation;
-        // int cEthBalLast = int(pool[_poolId].cEthBal);
-        // int hEthBalLast = int(pool[_poolId].hEthBal);
         pool[_poolId].cEthBal =
             (uint(cooledBalAfterAllocation) * decimals) /
             _currentAssetUsd; // new cEth Balance in Wei
         pool[_poolId].hEthBal =
             (uint(heatedBalAfterAllocation) * decimals) /
             _currentAssetUsd; // new hEth Balance in Wei
-        // if (parentPoolId[_poolId] != 0) {
-        //     parentPoolBal[_poolId].cEthBal = uint(
-        //         int(parentPoolBal[_poolId].cEthBal) +
-        //             int(pool[_poolId].cEthBal) -
-        //             cEthBalLast
-        //     );
-        //     parentPoolBal[_poolId].hEthBal = uint(
-        //         int(parentPoolBal[_poolId].hEthBal) +
-        //             int(pool[_poolId].hEthBal) -
-        //             hEthBalLast
-        //     );
-        // }
         pool[_poolId].lastSettledUsdPrice = pool[_poolId].currentUsdPrice;
     }
 
