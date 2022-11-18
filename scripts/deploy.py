@@ -33,10 +33,17 @@ def deploy_gwin_protocol_and_gwin_token():
     tx1 = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
     tx1.wait(1)
 
-    # Change to True to deploy pools to network, change to False if running testing scripts
+    # NOTE: IMPORTANT!! Change to True to deploy pools to network, change to False if running testing scripts
+    
+    ##@@@@@   SET THIS VARIABLE   @@@@@###
+    # True - deploys pools for sandbox type testing
+    # False - deploys only contract for testing scripts
     deploy_pools = False
+    ##@@@@@   SET THIS VARIABLE   @@@@@###
 
     if deploy_pools == True:
+        # Deploy initial pools for sandbox type testing
+
         #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\  ETH/USD 2x Long Stable Pool (-100, 200)  /@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
         pool_id = 0
         parent_id = 1
