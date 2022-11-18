@@ -526,15 +526,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                             (ethStakedWithParent[parentId][addrC].cBal * bps) /
                             parentPoolBal[parentId].cEthBal;
                     }
-                    // Can be expanded on to further optimize by removing redundancy
-                    // Flags index and stores for removal AFTER calculations are finished
-                    // if (
-                    //     ethStakedBalance[_poolId][addrC].cBal <= 0 &&
-                    //     ethStakedBalance[_poolId][addrC].hBal <= 0
-                    // ) {
-                    //     indexNeedsRemoved = true;
-                    //     indexToRemove = ethStakersIndex;
-                    // }
                 }
             } else if (_isCooled == false && _isHeated == true) {
                 // only Heated tranche percentage numbers are affected by heated tx
@@ -548,15 +539,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     ethStakedBalance[_poolId][addrC].hPercent =
                         (ethStakedBalance[_poolId][addrC].hBal * bps) /
                         pool[_poolId].hEthBal;
-                    // Can be expanded on to further optimize by removing redundancy
-                    // Flags index and stores for removal AFTER calculations are finished
-                    // if (
-                    //     ethStakedBalance[_poolId][addrC].cBal <= 0 &&
-                    //     ethStakedBalance[_poolId][addrC].hBal <= 0
-                    // ) {
-                    //     indexNeedsRemoved = true;
-                    //     indexToRemove = ethStakersIndex;
-                    // }
                 }
             } else {
                 // Cooled and Heated tranche percentage numbers are affected by tx
@@ -581,23 +563,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     ethStakedBalance[_poolId][addrC].hPercent =
                         (ethStakedBalance[_poolId][addrC].hBal * bps) /
                         pool[_poolId].hEthBal;
-                    // Can be expanded on to further optimize by removing redundancy
-                    // Flags index and stores for removal AFTER calculations are finished
-                    // if (
-                    //     ethStakedBalance[_poolId][addrC].cBal <= 0 &&
-                    //     ethStakedBalance[_poolId][addrC].hBal <= 0
-                    // ) {
-                    //     indexNeedsRemoved = true;
-                    //     indexToRemove = ethStakersIndex;
-                    // }
                 }
             }
-            // Can be expanded on to further optimize by removing redundancy
-            // Remove user if balances are empty, done after calculation so array indexes are not disrupted
-            // #indexRemovalProblem
-            // if (indexNeedsRemoved == true) {
-            //     removeFromArray(_poolId, indexToRemove);
-            // }
         }
     }
 

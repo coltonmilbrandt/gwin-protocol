@@ -15,6 +15,8 @@ networks:
     goerli:
         eth_usd_price_feed: "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e"
         xau_usd_price_feed: "0x7b219F57a8e9C7303204Af681e9fA69d17ef626f"
+        btc_usd_price_feed: "0xA39434A63A52E749F02807ae27335515BA4b07F7"
+        jpy_usd_price_feed: "0x295b398c95cEB896aFA18F25d0c6431Fd17b1431"
         fee: 100000000000000000
         fund_amount: 5000000000000000000
         gas_lane: "0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15"

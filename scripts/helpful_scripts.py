@@ -22,6 +22,8 @@ LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
     "matic-fork",
 ]
 
+TEST_BLOCKCHAIN_ENVIRONMENTS = ["goerli"]
+
 # Etherscan usually takes a few blocks to register the contract has been deployed
 BLOCK_CONFIRMATIONS_FOR_VERIFICATION = (
     1 if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS else 6
@@ -31,17 +33,23 @@ contract_to_mock = {
     "link_token": LinkToken,
     "eth_usd_price_feed": MockV3Aggregator,
     "xau_usd_price_feed": MockV3Aggregator,
+    "btc_usd_price_feed": MockV3Aggregator,
+    "jpy_usd_price_feed": MockV3Aggregator,
     "oracle": MockOracle,
 }
 
 contract_decimals = {
     "eth_usd_price_feed": 8,
     "xau_usd_price_feed": 18,
+    "btc_usd_price_feed": 8,
+    "jpy_usd_price_feed": 18,
 }
 
 contract_initial_value = {
-    "eth_usd_price_feed": 1000,
-    "xau_usd_price_feed": 1600,
+    "eth_usd_price_feed": 1000_00000000,
+    "xau_usd_price_feed": 1600_000000000000000000,
+    "btc_usd_price_feed": 16000_00000000,
+    "jpy_usd_price_feed": 7000000000000000,
 }
 
 DECIMALS = 18
