@@ -316,7 +316,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
         // Re-Adjust user percentages
         reAdjust(_poolId, false, _isCooled, _isHeated);
-        // Re-Adjust child pool weights optimally
+        // Re-Adjust all cooled child pool weights optimally
         reAdjustChildPools(_poolId);
     }
 
@@ -324,7 +324,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     function previewUserBalance(uint _poolId) public view returns (uint, uint) {
         uint heatedBalance;
         uint cooledBalance;
-        // simulate interaction to preview heated and cooled balances
+        // simulate interaction to preview heated and cooled balances at current price
         (heatedBalance, cooledBalance) = simulateInteract(
             _poolId,
             retrieveCurrentPrice(_poolId)
@@ -337,7 +337,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (userHeatedBalance, userCooledBalance);
     }
 
-    /// WITHDRAW /// - used to withdraw from cooled or heated tranche, or both
+    //@@  WITHDRAW  @@// - used to withdraw from cooled or heated tranche, or both
     function withdrawFromTranche(
         uint _poolId,
         bool _isCooled,
@@ -352,11 +352,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         require(_isCooled == true || _isHeated == true);
         uint parentId = parentPoolId[_poolId];
 
-        // Interact to rebalance Tranches with new USD price
+        // Interact to rebalance Tranches with new price feed value
         interactByPool(_poolId);
         // Re-adjust the user balances based on price change
         reAdjust(_poolId, true, _isCooled, _isHeated);
 
+        // if withdrawing all, set amount according to pool or parent pool user balance
         if (_isAll == true) {
             if (_isCooled == true) {
                 if (parentPoolId[_poolId] != 0) {
@@ -382,7 +383,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 );
             }
         }
-
         // Withdraw ETH
         if (_cAmount > 0 && _hAmount > 0) {
             // Cooled and Heated
@@ -425,11 +425,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
         // Re-Adjust user percentages
         reAdjust(_poolId, false, _isCooled, _isHeated);
+        // Re-Adjust all cooled child pool weights optimally
         reAdjustChildPools(_poolId);
     }
 
-    /// REMOVE-FROM-ARRAY /// - removes the staker from the array of ETH stakers
-    // #indexRemovalProblem
+    //@@  REMOVE-FROM-ARRAY  @@// - removes the staker from the array of ETH stakers
+    // can be expanded on to further optimize by removing redundancy
     function removeFromArray(uint _poolId, uint index) private {
         ethStakers[_poolId][index] = ethStakers[_poolId][
             ethStakers[_poolId].length - 1
@@ -437,12 +438,14 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ethStakers[_poolId].pop();
     }
 
+    //@@ INTERACT BY POOL  @@// -- interacts to settle pool or all child pools
     function interactByPool(uint poolId) private {
         uint parentId = parentPoolId[poolId];
         if (parentId == 0) {
+            // if no parent, settle single pool
             interact(poolId);
         } else {
-            // refactor
+            // settle all relevant pools
             uint cEthInChildPools;
             uint hEthInChildPools;
             for (
@@ -451,17 +454,19 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 i++
             ) {
                 uint poolIdIndex = parentPoolBal[parentId].childPoolIds[i];
+                // settle each pool
                 interact(poolIdIndex);
+                // add all balances to get parent pool balances
                 cEthInChildPools += pool[poolIdIndex].cEthBal;
                 hEthInChildPools += pool[poolIdIndex].hEthBal;
             }
+            // set parent pool balances after settling
             parentPoolBal[parentId].cEthBal = cEthInChildPools;
             parentPoolBal[parentId].hEthBal = hEthInChildPools;
-            // reAdjustChildPools(poolId);
         }
     }
 
-    // RE-ADJUST /// - adjusts affected tranche percentages and balances
+    //@@  RE-ADJUST  @@// - adjusts only affected user pool percentages and balances
     function reAdjust(
         uint _poolId,
         bool _beforeTx,
@@ -471,31 +476,35 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint parentId = parentPoolId[_poolId];
         if (_beforeTx == true) {
             // BEFORE deposit, only balances are affected based on percentages
-            liquidateIfZero(_poolId);
+            liquidateIfZero(_poolId); // reset percentages on zeroed balances
             for (
                 uint256 ethStakersIndex = 0;
                 ethStakersIndex < ethStakers[_poolId].length;
                 ethStakersIndex++
             ) {
+                // adjust balances based on percentage claim
                 address addrC = ethStakers[_poolId][ethStakersIndex];
                 if (parentPoolId[_poolId] == 0) {
+                    // track by single pool
                     ethStakedBalance[_poolId][addrC].cBal =
                         (pool[_poolId].cEthBal *
                             ethStakedBalance[_poolId][addrC].cPercent) /
                         bps;
                 } else {
+                    // track by parent pool
                     ethStakedWithParent[parentId][addrC].cBal =
                         (parentPoolBal[parentId].cEthBal *
                             ethStakedWithParent[parentId][addrC].cPercent) /
                         bps;
                 }
+                // adjust heated balance by pool
                 ethStakedBalance[_poolId][addrC].hBal =
                     (pool[_poolId].hEthBal *
                         ethStakedBalance[_poolId][addrC].hPercent) /
                     bps;
             }
         } else {
-            // AFTER tx, only affected tranche percentages change
+            // AFTER tx, only affected pool percentages change (ex. cooled)
             uint indexToRemove; // to track index of user in ethStakers array if account emptied
             bool indexNeedsRemoved = false; // to differentiate indexToRemove == 0 from default ethStakers[0]
             if (_isCooled == true && _isHeated == false) {
@@ -507,16 +516,18 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 ) {
                     address addrC = ethStakers[_poolId][ethStakersIndex];
                     if (parentPoolId[_poolId] == 0) {
+                        // track by single pool
                         ethStakedBalance[_poolId][addrC].cPercent =
                             (ethStakedBalance[_poolId][addrC].cBal * bps) /
                             pool[_poolId].cEthBal;
                     } else {
+                        // track by parent pool
                         ethStakedWithParent[parentId][addrC].cPercent =
                             (ethStakedWithParent[parentId][addrC].cBal * bps) /
                             parentPoolBal[parentId].cEthBal;
                     }
+                    // Can be expanded on to further optimize by removing redundancy
                     // Flags index and stores for removal AFTER calculations are finished
-                    // #indexRemovalProblem
                     // if (
                     //     ethStakedBalance[_poolId][addrC].cBal <= 0 &&
                     //     ethStakedBalance[_poolId][addrC].hBal <= 0
@@ -532,11 +543,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     ethStakersIndex < ethStakers[_poolId].length;
                     ethStakersIndex++
                 ) {
+                    // heated percentages are always by single pool
                     address addrC = ethStakers[_poolId][ethStakersIndex];
                     ethStakedBalance[_poolId][addrC].hPercent =
                         (ethStakedBalance[_poolId][addrC].hBal * bps) /
                         pool[_poolId].hEthBal;
-                    // #indexRemovalProblem
+                    // Can be expanded on to further optimize by removing redundancy
                     // Flags index and stores for removal AFTER calculations are finished
                     // if (
                     //     ethStakedBalance[_poolId][addrC].cBal <= 0 &&
@@ -555,19 +567,21 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 ) {
                     address addrC = ethStakers[_poolId][ethStakersIndex];
                     if (parentPoolId[_poolId] == 0) {
+                        // track by single pool
                         ethStakedBalance[_poolId][addrC].cPercent =
                             (ethStakedBalance[_poolId][addrC].cBal * bps) /
                             pool[_poolId].cEthBal;
                     } else {
+                        // track by parent pool
                         ethStakedWithParent[parentId][addrC].cPercent =
                             (ethStakedWithParent[parentId][addrC].cBal * bps) /
                             parentPoolBal[parentId].cEthBal;
                     }
-
+                    // track heated by single pool
                     ethStakedBalance[_poolId][addrC].hPercent =
                         (ethStakedBalance[_poolId][addrC].hBal * bps) /
                         pool[_poolId].hEthBal;
-                    // #indexRemovalProblem
+                    // Can be expanded on to further optimize by removing redundancy
                     // Flags index and stores for removal AFTER calculations are finished
                     // if (
                     //     ethStakedBalance[_poolId][addrC].cBal <= 0 &&
@@ -578,6 +592,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     // }
                 }
             }
+            // Can be expanded on to further optimize by removing redundancy
             // Remove user if balances are empty, done after calculation so array indexes are not disrupted
             // #indexRemovalProblem
             // if (indexNeedsRemoved == true) {
@@ -586,9 +601,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
     }
 
-    /// LIQUIDATE-IF-ZERO /// - liquidates every user in a zero balance tranche
+    //@@ LIQUIDATE-IF-ZERO  @@// - liquidates every user in a zero balance tranche
     function liquidateIfZero(uint _poolId) private {
-        // ISSUE this could likely be optimized to avoid performing the for loops twice when liquidated
+        // when user balance falls to zero, user percent needs to be set to zero
         for (
             uint256 ethStakersIndex = 0;
             ethStakersIndex < ethStakers[_poolId].length;
@@ -596,19 +611,19 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ) {
             address addrC = ethStakers[_poolId][ethStakersIndex];
             if (pool[_poolId].cEthBal == 0) {
-                // if tranche is liquidated, reset user to zero
+                // if pool is liquidated, reset user to zero
                 ethStakedBalance[_poolId][addrC].cPercent = 0;
                 ethStakedBalance[_poolId][addrC].cBal = 0;
             }
             if (pool[_poolId].hEthBal == 0) {
-                // if tranche is liquidated, reset user to zero
+                // if pool is liquidated, reset user to zero
                 ethStakedBalance[_poolId][addrC].hBal = 0;
                 ethStakedBalance[_poolId][addrC].hPercent = 0;
             }
         }
     }
 
-    /// VIEW-BALANCE-FUNCTIONS /// - check balances
+    //@@  VIEW-BALANCE-FUNCTIONS  @@// - get price feeds, check balances, check percents
 
     function retrieveCurrentPrice(uint _poolId) public view returns (uint) {
         // pool's priceFeedAddress is fed into the AggregatorV3Interface
@@ -659,6 +674,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         address _quote,
         uint8 _decimals
     ) public view returns (int256) {
+        // use two price feeds to derive a new feed
         require(
             _decimals > uint8(0) && _decimals <= uint8(18),
             "Invalid _decimals"
@@ -690,10 +706,14 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return _price;
     }
 
+    /////// LAST SETTLED VIEW FUNCTIONS ///////  --  get last settled values, not current/if-settled values
+
+    // CONTRACT - get balance of all ETH in contract
     function retrieveEthInContract() public view returns (uint) {
         return address(this).balance;
     }
 
+    // USER - percent of single cEth pool
     function retrieveCEthPercentBalance(uint _poolId, address _user)
         public
         view
@@ -702,6 +722,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return ethStakedBalance[_poolId][_user].cPercent;
     }
 
+    // USER - percent of single hEth pool
     function retrieveHEthPercentBalance(uint _poolId, address _user)
         public
         view
@@ -710,6 +731,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return ethStakedBalance[_poolId][_user].hPercent;
     }
 
+    // USER - balance in single cEth pool
     function retrieveCEthBalance(uint _poolId, address _user)
         public
         view
@@ -718,17 +740,19 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return ethStakedBalance[_poolId][_user].cBal;
     }
 
+    // USER - balance in single hEth pool
     function retrieveHEthBalance(uint _poolId, address _user)
         public
         view
         returns (uint)
     {
-        // Balances don't always update, but percents provide accurate balance
+        // derive balance by percent
         uint perc = retrieveHEthPercentBalance(_poolId, _user);
         uint bal = retrieveProtocolHEthBalance(_poolId);
         return (bal * perc) / bps;
     }
 
+    // USER - address at index of stakers array
     function retrieveAddressAtIndex(uint _poolId, uint _index)
         public
         view
@@ -737,6 +761,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return ethStakers[_poolId][_index];
     }
 
+    // POOL - balance of cEth pool
     function retrieveProtocolCEthBalance(uint _poolId)
         public
         view
@@ -745,6 +770,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return pool[_poolId].cEthBal;
     }
 
+    // PARENT POOL - balance of parent cEth pool
     function getParentUserCEthBalance(uint _poolId, address _user)
         public
         view
@@ -755,6 +781,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (bal * perc) / bps;
     }
 
+    // USER - percent of parent pool
     function getParentUserCEthPercent(uint _poolId, address _user)
         public
         view
@@ -764,16 +791,19 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return ethStakedWithParent[parentId][_user].cPercent;
     }
 
+    // USER - balance in parent pool
     function getParentPoolCEthBalance(uint _poolId) public view returns (uint) {
         uint parentId = parentPoolId[_poolId];
         return parentPoolBal[parentId].cEthBal;
     }
 
+    // PARENT POOL - balance of parent hEth pool
     function getParentPoolHEthBalance(uint _poolId) public view returns (uint) {
         uint parentId = parentPoolId[_poolId];
         return parentPoolBal[parentId].hEthBal;
     }
 
+    // POOL - balance of hEth pool
     function retrieveProtocolHEthBalance(uint _poolId)
         public
         view
@@ -782,6 +812,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return pool[_poolId].hEthBal;
     }
 
+    // POOL - current and last settled prices
     function retrieveProtocolEthPrice(uint _poolId)
         public
         view
@@ -793,7 +824,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         );
     }
 
-    // USER - preview CEth balance at current price
+    /////// PREVIEW FUNCTION ///////  --  get current values rather than last settled values
+
+    // USER - cEth balance preview at current price
     function previewUserCEthBalance(uint _poolId, address _user)
         public
         view
@@ -808,7 +841,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return userCooledBal;
     }
 
-    // USER - preview cEth balance at selected price
+    // USER - cETH balance preview at selected price
     function previewUserCEthBalanceAtPrice(
         uint _poolId,
         uint _price,
@@ -823,7 +856,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (bal * perc) / bps;
     }
 
-    // USER - preview hEth balance at current price
+    // USER - hEth balance preview at current price
     function previewUserHEthBalance(uint _poolId, address _user)
         public
         view
@@ -838,7 +871,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return userHeatedBal;
     }
 
-    // USER - preview cEth balance at current price
+    // USER - cEth balance preview at current price
     function previewParentUserCEthBalance(uint _poolId, address _user)
         public
         view
@@ -853,7 +886,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return userCooledBal;
     }
 
-    // USER - preview hEth balance at selected price
+    // USER - hEth balance preview at selected price
     function previewUserHEthBalanceAtPrice(
         uint _poolId,
         uint _price,
@@ -868,7 +901,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (bal * perc) / bps;
     }
 
-    // USER - preview cEth balance at selected price
+    // USER - cEth balance preview at selected price
     function previewParentUserCEthBalanceAtPrice(
         uint _poolId,
         uint _price,
@@ -879,7 +912,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (bal * perc) / bps;
     }
 
-    // PARENT POOL - preview cEth balance
+    // PARENT POOL - cEth balance preview
     function getEstCEthInParentPool(uint _poolId, uint _price)
         public
         view
@@ -901,7 +934,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return cEthInChildPoolsEst;
     }
 
-    // POOL - preview hEth/cEth balances at current price
+    // POOL - hEth/cEth balance preview at current price
     function previewPoolBalances(uint _poolId)
         public
         view
@@ -916,7 +949,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (hEthBalEst, cEthBalEst);
     }
 
-    // POOL - preview hEth/cEth balances at selected price
+    // POOL - hEth/cEth balance preview at selected price
     function previewPoolBalancesAtPrice(uint _poolId, uint _price)
         public
         view
@@ -928,62 +961,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (hEthBalEst, cEthBalEst);
     }
 
-    /// STAKE-TOKENS /// - for future use with ERC-20s
-    function stakeTokens(uint256 _amount, address _token) public {
-        // Make sure that the amount to stake is more than 0
-        require(_amount > 0, "Amount must be more than 0");
-        // Check whether token is allowed by passing it to tokenIsAllowed()
-        require(tokenIsAllowed(_token), "Token is not currently allowed.");
-
-        // NOTES: transferFrom  --  ERC20s have transfer and transfer from.
-        // Transfer only works if you call it from the wallet that owns the token
-
-        // Transfer _amount of _token to the contract address
-        IERC20(_token).transferFrom(msg.sender, address(this), _amount);
-        // Set the _token as one of the unique tokens staked by the staker
-        updateUniquePositions(msg.sender, _token);
-        // Update the staking balance for the staker
-        stakingBalance[_token][msg.sender] =
-            stakingBalance[_token][msg.sender] +
-            _amount;
-        // If after this, the staker has just 1 token staked, then add the staker to stakers[] array
-        if (uniquePositions[msg.sender] == 1) {
-            stakers.push(msg.sender);
-        }
-    }
-
-    /// UPDATE-UNIQUE-POSITIONS /// - updates the mapping of user to tokens staked
-    function updateUniquePositions(address _user, address _token) internal {
-        // If the staking balance of the staker is less that or equal to 0 then...
-        if (stakingBalance[_token][_user] <= 0) {
-            // add 1 to the number of unique tokens staked
-            uniquePositions[_user] = uniquePositions[_user] + 1;
-        }
-    }
-
-    /// STAKE-TOKENS /// - add a token address to allowed tokens for staking, only owner can call
-    function addAllowedTokens(address _token) public onlyOwner {
-        // add token address to allowedTokens[] array
-        allowedTokens.push(_token);
-    }
-
-    /// TOKEN-IS-ALLOWED /// - returns whether token is allowed
-    function tokenIsAllowed(address _token) public view returns (bool) {
-        // Loops through the array of allowedTokens[] for length of array
-        for (
-            uint256 allowedTokensIndex = 0;
-            allowedTokensIndex < allowedTokens.length;
-            allowedTokensIndex++
-        ) {
-            // If token at index matched the passed in token, return true
-            if (allowedTokens[allowedTokensIndex] == _token) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /// GET PROFIT /// - returns profit percentage in terms of basis points
+    //@@  GET PROFIT  @@// - returns profit percentage in terms of basis points
     function getProfit(uint _poolId, uint256 _currentUsdPrice)
         public
         view
@@ -995,7 +973,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return profit;
     }
 
-    /// TRANCHE SPECIFIC CALCS /// - calculates allocation difference for a tranche (also avoids 'stack too deep' error)
+    //@@  TRANCHE/POOL SPECIFIC CALCS  @@// - calculates allocation difference for a tranche/pool
     function trancheSpecificCalcs(
         uint _poolId,
         bool _isCooled,
@@ -1010,6 +988,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             uint256
         )
     {
+        // use tranche/pool balances to estimate expected return
+        // and determine balanced re-allocation between pools
         uint256 trancheBal;
         int256 r;
         // get tranche balance and basis points for expected return
@@ -1047,8 +1027,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (allocationDifference, trancheChange, nonNaturalRatio);
     }
 
-    /// INTERACT /// - rebalances the cooled and heated tranches
+    //@@  INTERACT  @@// - rebalances the cooled and heated tranches/pools
     function interact(uint _poolId) private {
+        // get current price to determine profit
         uint256 currentAssetUsd = retrieveCurrentPrice(_poolId);
         pool[_poolId].currentUsdPrice = currentAssetUsd;
         int256 assetUsdProfit = getProfit(_poolId, currentAssetUsd); // returns ETH/USD profit in terms of basis points
@@ -1122,11 +1103,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 );
             }
         }
-
-        reallocate(_poolId, currentAssetUsd, cooledChange, cooledAllocation); // reallocate the protocol ETH according to price movement
+        // reallocate the protocol ETH according to price movement
+        reallocate(_poolId, currentAssetUsd, cooledChange, cooledAllocation);
     }
 
-    /// REALLOCATE /// - uses the USD values to calculate ETH balances of tranches
+    //@@  REALLOCATE  @@// - uses the USD values to calculate ETH balances of tranches
     function reallocate(
         uint _poolId,
         uint256 _currentAssetUsd, // in usdDecimal form
@@ -1149,12 +1130,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         pool[_poolId].lastSettledUsdPrice = pool[_poolId].currentUsdPrice;
     }
 
-    /// ABSOLUTE-VALUE /// - returns the absolute value of an int
+    //@@  ABSOLUTE-VALUE  @@// - returns the absolute value of an int
     function abs(int x) private pure returns (int) {
         return x >= 0 ? x : -x;
     }
 
-    // /// SIMULATE INTERACT /// - view only of simulated rebalance of the cooled and heated tranches
+    //@@  SIMULATE INTERACT  @@// - view only of simulated rebalance of the cooled and heated tranches
     function simulateInteract(uint _poolId, uint _simAssetUsd)
         public
         view
@@ -1201,7 +1182,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             ); // reallocate the protocol ETH according to price movement
     }
 
-    /// REALLOCATE /// - uses the USD values to calculate ETH balances of tranches
+    //@@  SIMULATE REALLOCATE  @@// - uses the USD values to calculate ETH balances of tranches
     function simulateReallocate(
         uint _poolId,
         uint256 _simAssetUsd, // in usdDecimal form
@@ -1251,6 +1232,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (hEthSimBal, cEthSimBal);
     }
 
+    //@@  GET RANGE OF RETURNS  @@// - shows the estimated price movement of a position
     function getRangeOfReturns(
         uint _poolId,
         address _address,
@@ -1258,19 +1240,24 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         bool _isAll
     ) public view returns (int[] memory) {
         uint assetUsdPrice = retrieveCurrentPrice(_poolId);
+        // set bottom range of percents
         int currentPercent = -50_0000000000;
         int assetUsdAtIndex;
+        // create array to record values at different prices
         int[] memory estBals = new int[](11);
         for (uint index = 0; index < 11; index++) {
+            // use percent change to get simulated price feed value at index
             assetUsdAtIndex =
                 (int(assetUsdPrice) * (int(bps) + currentPercent)) /
                 int(bps);
+            // simulate interact to preview settled balances
             uint hBalEst;
             uint cBalEst;
             (hBalEst, cBalEst) = simulateInteract(
                 _poolId,
                 uint(assetUsdAtIndex)
             );
+            // calculate estimated balance at price feed value
             uint balanceRequested;
             if (_isCooled == false || _isAll == true) {
                 balanceRequested =
@@ -1282,10 +1269,64 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     (cBalEst * ethStakedBalance[_poolId][_address].cPercent) /
                     bps;
             }
+            // record estimated balance at price
             estBals[index] = int(balanceRequested);
+            // increment percent by 10%
             currentPercent += 10_0000000000;
         }
-
+        // return array of estimated balance at different prices
         return (estBals);
+    }
+
+    //////// ERC-20 FOR FUTURE USE /////////
+
+    //@@  STAKE TOKENS  @@// - for future use with ERC-20s
+    function stakeTokens(uint256 _amount, address _token) public {
+        // Make sure that the amount to stake is more than 0
+        require(_amount > 0, "Amount must be more than 0");
+        // Check whether token is allowed by passing it to tokenIsAllowed()
+        require(tokenIsAllowed(_token), "Token is not currently allowed.");
+        IERC20(_token).transferFrom(msg.sender, address(this), _amount);
+        // Set the _token as one of the unique tokens staked by the staker
+        updateUniquePositions(msg.sender, _token);
+        // Update the staking balance for the staker
+        stakingBalance[_token][msg.sender] =
+            stakingBalance[_token][msg.sender] +
+            _amount;
+        // If after this, the staker has just 1 token staked, then add the staker to stakers[] array
+        if (uniquePositions[msg.sender] == 1) {
+            stakers.push(msg.sender);
+        }
+    }
+
+    //@@  UPDATE UNIQUE POSITIONS  @@// - updates the mapping of user to tokens staked
+    function updateUniquePositions(address _user, address _token) internal {
+        // If the staking balance of the staker is less that or equal to 0 then...
+        if (stakingBalance[_token][_user] <= 0) {
+            // add 1 to the number of unique tokens staked
+            uniquePositions[_user] = uniquePositions[_user] + 1;
+        }
+    }
+
+    //@@ STAKE TOKENS  @@// - add a token address to allowed tokens for staking, only owner can call
+    function addAllowedTokens(address _token) public onlyOwner {
+        // add token address to allowedTokens[] array
+        allowedTokens.push(_token);
+    }
+
+    //@@  TOKEN IS ALLOWED  @@// - returns whether token is allowed
+    function tokenIsAllowed(address _token) public view returns (bool) {
+        // Loops through the array of allowedTokens[] for length of array
+        for (
+            uint256 allowedTokensIndex = 0;
+            allowedTokensIndex < allowedTokens.length;
+            allowedTokensIndex++
+        ) {
+            // If token at index matched the passed in token, return true
+            if (allowedTokens[allowedTokensIndex] == _token) {
+                return true;
+            }
+        }
+        return false;
     }
 }
