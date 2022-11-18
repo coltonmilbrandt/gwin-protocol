@@ -22,10 +22,10 @@ def deploy_gwin_protocol_and_gwin_token():
     )
     print('Gwin Protocol is deployed!')
     # We could do get_contract().address possibly. The entire contract may not be necessary
-    print('Getting eth_usd_price_feed...')
     eth_usd_price_feed = get_contract("eth_usd_price_feed")
     xau_usd_price_feed = get_contract("xau_usd_price_feed")
     if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        print('Getting eth_usd_price_feed...')
         eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account})
         xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account})
     tx1 = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
