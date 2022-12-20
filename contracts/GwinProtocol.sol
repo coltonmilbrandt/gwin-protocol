@@ -66,6 +66,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     // ************* Structs *************
 
     struct Pool {
+        uint id;
         uint parentId;
         uint256 lastSettledUsdPrice;
         uint256 currentUsdPrice;
@@ -132,6 +133,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         int _hRate
     ) external payable onlyOwner returns (uint) {
         poolIds.push(newPoolId);
+        pool[newPoolId].id = newPoolId;
         pool[newPoolId].poolType = _type;
         require(
             pool[newPoolId].cEthBal == 0 && pool[newPoolId].hEthBal == 0,
