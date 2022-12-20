@@ -10,7 +10,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     // pool ID -> user address -> user balances struct
     mapping(uint => mapping(address => Bal)) public ethStakedBalance;
 
-    // parentID -> user adddress -> user balances struc
+    // parentID -> user adddress -> user balances struct
     mapping(uint => mapping(address => ParentBal)) public ethStakedWithParent;
 
     // token address -> staker address -> amount
@@ -55,10 +55,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     uint[] public poolIds;
 
     // ********* Decimal Values *********
-    uint256 decimals = 10**18;
+    uint256 decimals = 10 ** 18;
     uint8 usdDecimalsUint = 8;
-    uint256 usdDecimals = 10**usdDecimalsUint;
-    uint256 bps = 10**12;
+    uint256 usdDecimals = 10 ** usdDecimalsUint;
+    uint256 bps = 10 ** 12;
 
     // ************* Values *************
     uint newPoolId = 0;
@@ -76,6 +76,24 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         int256 hRate;
         int256 cRate;
         uint8 poolType; // as in classic (0) or modified (1)
+    }
+
+    struct PoolWithBalances {
+        uint id;
+        uint parentId;
+        uint256 lastSettledUsdPrice;
+        uint256 currentUsdPrice;
+        bytes32 basePriceFeedKey;
+        bytes32 quotePriceFeedKey;
+        uint256 hEthBal;
+        uint256 cEthBal;
+        int256 hRate;
+        int256 cRate;
+        uint8 poolType;
+        uint cBalancePreview;
+        uint hBalancePreview;
+        uint userCEthBalPreview;
+        uint userHEthBalPreview;
     }
 
     struct ParentPoolBal {
@@ -240,10 +258,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     //@@  ADD AGGREGATOR  @@// -- adds chainlink price feed aggregator
-    function addAggregator(bytes32 currencyKey, address aggregatorAddress)
-        private
-        onlyOwner
-    {
+    function addAggregator(
+        bytes32 currencyKey,
+        address aggregatorAddress
+    ) private onlyOwner {
         AggregatorV3Interface aggregator = AggregatorV3Interface(
             aggregatorAddress
         );
@@ -608,13 +626,13 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             (
                 ,
                 /*uint80 roundID*/
-                price, /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
+                price /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/,
                 ,
                 ,
 
             ) = priceFeed.latestRoundData();
             // set number of decimals for token value
-            uint priceFeedDecimals = 10**priceFeed.decimals();
+            uint priceFeedDecimals = 10 ** priceFeed.decimals();
             uint decimalDifference;
             if (priceFeedDecimals > usdDecimals) {
                 // convert to native decimals for math
@@ -646,7 +664,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             _decimals > uint8(0) && _decimals <= uint8(18),
             "Invalid _decimals"
         );
-        int256 feedDecimals = int256(10**uint256(_decimals));
+        int256 feedDecimals = int256(10 ** uint256(_decimals));
         (, int256 basePrice, , , ) = AggregatorV3Interface(_base)
             .latestRoundData();
         uint8 baseDecimals = AggregatorV3Interface(_base).decimals();
@@ -666,9 +684,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint8 _decimals
     ) internal pure returns (int256) {
         if (_priceDecimals < _decimals) {
-            return _price * int256(10**uint256(_decimals - _priceDecimals));
+            return _price * int256(10 ** uint256(_decimals - _priceDecimals));
         } else if (_priceDecimals > _decimals) {
-            return _price / int256(10**uint256(_priceDecimals - _decimals));
+            return _price / int256(10 ** uint256(_priceDecimals - _decimals));
         }
         return _price;
     }
@@ -681,38 +699,34 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     // USER - percent of single cEth pool
-    function retrieveCEthPercentBalance(uint _poolId, address _user)
-        public
-        view
-        returns (uint)
-    {
+    function retrieveCEthPercentBalance(
+        uint _poolId,
+        address _user
+    ) public view returns (uint) {
         return ethStakedBalance[_poolId][_user].cPercent;
     }
 
     // USER - percent of single hEth pool
-    function retrieveHEthPercentBalance(uint _poolId, address _user)
-        public
-        view
-        returns (uint)
-    {
+    function retrieveHEthPercentBalance(
+        uint _poolId,
+        address _user
+    ) public view returns (uint) {
         return ethStakedBalance[_poolId][_user].hPercent;
     }
 
     // USER - balance in single cEth pool
-    function retrieveCEthBalance(uint _poolId, address _user)
-        public
-        view
-        returns (uint)
-    {
+    function retrieveCEthBalance(
+        uint _poolId,
+        address _user
+    ) public view returns (uint) {
         return ethStakedBalance[_poolId][_user].cBal;
     }
 
     // USER - balance in single hEth pool
-    function retrieveHEthBalance(uint _poolId, address _user)
-        public
-        view
-        returns (uint)
-    {
+    function retrieveHEthBalance(
+        uint _poolId,
+        address _user
+    ) public view returns (uint) {
         // derive balance by percent
         uint perc = retrieveHEthPercentBalance(_poolId, _user);
         uint bal = retrieveProtocolHEthBalance(_poolId);
@@ -720,45 +734,40 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     // USER - address at index of stakers array
-    function retrieveAddressAtIndex(uint _poolId, uint _index)
-        public
-        view
-        returns (address)
-    {
+    function retrieveAddressAtIndex(
+        uint _poolId,
+        uint _index
+    ) public view returns (address) {
         return ethStakers[_poolId][_index];
     }
 
     // POOL - balance of cEth pool
-    function retrieveProtocolCEthBalance(uint _poolId)
-        public
-        view
-        returns (uint)
-    {
+    function retrieveProtocolCEthBalance(
+        uint _poolId
+    ) public view returns (uint) {
         return pool[_poolId].cEthBal;
     }
 
     // PARENT POOL - balance of parent cEth pool
-    function getParentUserCEthBalance(uint _poolId, address _user)
-        public
-        view
-        returns (uint)
-    {
+    function getParentUserCEthBalance(
+        uint _poolId,
+        address _user
+    ) public view returns (uint) {
         uint perc = getParentUserCEthPercent(_poolId, _user);
         uint bal = getParentPoolCEthBalance(_poolId);
         return (bal * perc) / bps;
     }
 
     // USER - percent of parent pool
-    function getParentUserCEthPercent(uint _poolId, address _user)
-        public
-        view
-        returns (uint)
-    {
+    function getParentUserCEthPercent(
+        uint _poolId,
+        address _user
+    ) public view returns (uint) {
         uint parentId = parentPoolId[_poolId];
         return ethStakedWithParent[parentId][_user].cPercent;
     }
 
-    // USER - balance in parent pool
+    // PARENT POOL - balance in parent pool
     function getParentPoolCEthBalance(uint _poolId) public view returns (uint) {
         uint parentId = parentPoolId[_poolId];
         return parentPoolBal[parentId].cEthBal;
@@ -771,20 +780,16 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     // POOL - balance of hEth pool
-    function retrieveProtocolHEthBalance(uint _poolId)
-        public
-        view
-        returns (uint)
-    {
+    function retrieveProtocolHEthBalance(
+        uint _poolId
+    ) public view returns (uint) {
         return pool[_poolId].hEthBal;
     }
 
     // POOL - current and last settled prices
-    function retrieveProtocolEthPrice(uint _poolId)
-        public
-        view
-        returns (uint, uint)
-    {
+    function retrieveProtocolEthPrice(
+        uint _poolId
+    ) public view returns (uint, uint) {
         return (
             pool[_poolId].currentUsdPrice,
             pool[_poolId].lastSettledUsdPrice
@@ -794,11 +799,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     /////// PREVIEW FUNCTIONS ///////  --  get current values rather than last settled values
 
     // USER - cEth balance preview at current price
-    function previewUserCEthBalance(uint _poolId, address _user)
-        public
-        view
-        returns (uint)
-    {
+    function previewUserCEthBalance(
+        uint _poolId,
+        address _user
+    ) public view returns (uint) {
         uint userCooledBal;
         userCooledBal = previewUserCEthBalanceAtPrice(
             _poolId,
@@ -824,11 +828,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     // USER - hEth balance preview at current price
-    function previewUserHEthBalance(uint _poolId, address _user)
-        public
-        view
-        returns (uint)
-    {
+    function previewUserHEthBalance(
+        uint _poolId,
+        address _user
+    ) public view returns (uint) {
         uint userHeatedBal;
         userHeatedBal = previewUserHEthBalanceAtPrice(
             _poolId,
@@ -839,11 +842,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     // USER - cEth balance preview at current price
-    function previewParentUserCEthBalance(uint _poolId, address _user)
-        public
-        view
-        returns (uint)
-    {
+    function previewParentUserCEthBalance(
+        uint _poolId,
+        address _user
+    ) public view returns (uint) {
         uint userCooledBal;
         userCooledBal = previewParentUserCEthBalanceAtPrice(
             _poolId,
@@ -880,11 +882,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     // PARENT POOL - cEth balance preview
-    function getEstCEthInParentPool(uint _poolId, uint _price)
-        public
-        view
-        returns (uint)
-    {
+    function getEstCEthInParentPool(
+        uint _poolId,
+        uint _price
+    ) public view returns (uint) {
         uint parentId = parentPoolId[_poolId];
         uint cEthInChildPoolsEst;
         for (
@@ -902,11 +903,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     // POOL - hEth/cEth balance preview at current price
-    function previewPoolBalances(uint _poolId)
-        public
-        view
-        returns (uint, uint)
-    {
+    function previewPoolBalances(
+        uint _poolId
+    ) public view returns (uint, uint) {
         uint hEthBalEst;
         uint cEthBalEst;
         (hEthBalEst, cEthBalEst) = previewPoolBalancesAtPrice(
@@ -917,23 +916,69 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     // POOL - hEth/cEth balance preview at selected price
-    function previewPoolBalancesAtPrice(uint _poolId, uint _price)
-        public
-        view
-        returns (uint, uint)
-    {
+    function previewPoolBalancesAtPrice(
+        uint _poolId,
+        uint _price
+    ) public view returns (uint, uint) {
         uint hEthBalEst;
         uint cEthBalEst;
         (hEthBalEst, cEthBalEst) = simulateInteract(_poolId, _price);
         return (hEthBalEst, cEthBalEst);
     }
 
+    // GET ALL POOLS - get an array of all the Pool structs that exist
+    function getAllPools() public view returns (Pool[] memory) {
+        Pool[] memory pools = new Pool[](poolIds.length);
+        for (uint i = 0; i < poolIds.length; i++) {
+            pools[i] = pool[poolIds[i]];
+        }
+        return pools;
+    }
+
+    // GET BALANCE PREVIEWS FOR ALL POOLS - get an array of Pool structs that include
+    // the current value in the pools, as well as the preview, i.e. if settled
+    // via a deposit or withdraw, which is the really the actual value.
+    function getAllPoolsWithBalances(
+        address _user
+    ) public view returns (PoolWithBalances[] memory poolsWithBalances) {
+        Pool[] memory pools = getAllPools();
+        poolsWithBalances = new PoolWithBalances[](pools.length);
+        for (uint i = 0; i < pools.length; i++) {
+            // get the hEthBal and cEthBal previews for the pool[i]
+            (uint hEthBalPreview, uint cEthBalPreview) = previewPoolBalances(
+                pools[i].id
+            );
+            poolsWithBalances[i].id = pools[i].id;
+            poolsWithBalances[i].parentId = pools[i].parentId;
+            poolsWithBalances[i].lastSettledUsdPrice = pools[i]
+                .lastSettledUsdPrice;
+            poolsWithBalances[i].currentUsdPrice = pools[i].currentUsdPrice;
+            poolsWithBalances[i].basePriceFeedKey = pools[i].basePriceFeedKey;
+            poolsWithBalances[i].quotePriceFeedKey = pools[i].quotePriceFeedKey;
+            poolsWithBalances[i].hEthBal = pools[i].hEthBal;
+            poolsWithBalances[i].cEthBal = pools[i].cEthBal;
+            poolsWithBalances[i].hRate = pools[i].hRate;
+            poolsWithBalances[i].cRate = pools[i].cRate;
+            poolsWithBalances[i].poolType = pools[i].poolType;
+            poolsWithBalances[i].cBalancePreview = cEthBalPreview;
+            poolsWithBalances[i].hBalancePreview = hEthBalPreview;
+            poolsWithBalances[i].userCEthBalPreview = previewUserCEthBalance(
+                pools[i].id,
+                _user
+            );
+            poolsWithBalances[i].userHEthBalPreview = previewUserHEthBalance(
+                pools[i].id,
+                _user
+            );
+        }
+        return poolsWithBalances;
+    }
+
     //@@  GET PROFIT  @@// - returns profit percentage in terms of basis points
-    function getProfit(uint _poolId, uint256 _currentUsdPrice)
-        public
-        view
-        returns (int256)
-    {
+    function getProfit(
+        uint _poolId,
+        uint256 _currentUsdPrice
+    ) public view returns (int256) {
         int256 profit = ((int(_currentUsdPrice) -
             int(pool[_poolId].lastSettledUsdPrice)) * int(bps)) /
             int(pool[_poolId].lastSettledUsdPrice);
@@ -946,15 +991,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         bool _isCooled,
         int256 _assetUsdProfit,
         uint256 _currentAssetUsd
-    )
-        private
-        view
-        returns (
-            int256,
-            int256,
-            uint256
-        )
-    {
+    ) private view returns (int256, int256, uint256) {
         // use tranche/pool balances to estimate expected return
         // and determine balanced re-allocation between pools
         uint256 trancheBal;
@@ -1103,11 +1140,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     //@@  SIMULATE INTERACT  @@// - view only of simulated rebalance of the cooled and heated tranches
-    function simulateInteract(uint _poolId, uint _simAssetUsd)
-        public
-        view
-        returns (uint, uint)
-    {
+    function simulateInteract(
+        uint _poolId,
+        uint _simAssetUsd
+    ) public view returns (uint, uint) {
         int256 assetUsdProfit = getProfit(_poolId, _simAssetUsd); // returns ETH/USD profit in terms of basis points
 
         // find expected return and use it to calculate allocation difference for each tranche
