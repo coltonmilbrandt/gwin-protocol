@@ -8,8 +8,6 @@ import pytest
 # NOTE: The build folder must be deleted when new chain is initialized
 # this is temporary, easy to work around, and will be fixed when there is time
 
-# NOTE 2: Be sure to set the deploy_pools variable to FALSE in deploy.py before running tests
-
 def test_use_protocol():
     # Arrange
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:

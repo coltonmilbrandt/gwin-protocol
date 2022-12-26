@@ -83,7 +83,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint id;
         uint parentId;
         uint256 lastSettledUsdPrice;
-        uint256 currentUsdPrice;
+        uint256 currentPrice;
         bytes32 basePriceFeedKey;
         bytes32 quotePriceFeedKey;
         uint256 hEthBal;
@@ -170,6 +170,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ethStakedBalance[newPoolId][msg.sender].hPercent = bps;
         pool[newPoolId].hEthBal = hDepositAmount;
         pool[newPoolId].cEthBal = cDepositAmount;
+        pool[newPoolId].parentId = _parentId;
         parentPoolId[newPoolId] = _parentId;
         // add price feed(s)
         addAggregator(_baseCurrencyKey, _basePriceFeedAddress);
@@ -750,7 +751,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return pool[_poolId].cEthBal;
     }
 
-    // PARENT POOL - balance of parent cEth pool
+    // USER PARENT POOL - balance of user in parent cEth pool
     function getParentUserCEthBalance(
         uint _poolId,
         address _user
@@ -878,8 +879,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint _price,
         address _user
     ) public view returns (uint) {
-        uint perc = getParentUserCEthPercent(_poolId, _user);
-        uint bal = getEstCEthInParentPool(_poolId, _price);
+        uint perc = getParentUserCEthPercent(_poolId, _user); // this line is good I think
+        uint bal = getEstCEthInParentPool(_poolId, _price); // this line passes in test
         return (bal * perc) / bps;
     }
 
@@ -954,7 +955,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             poolsWithBalances[i].parentId = pools[i].parentId;
             poolsWithBalances[i].lastSettledUsdPrice = pools[i]
                 .lastSettledUsdPrice;
-            poolsWithBalances[i].currentUsdPrice = pools[i].currentUsdPrice;
+            poolsWithBalances[i].currentPrice = retrieveCurrentPrice(
+                pools[i].id
+            );
             poolsWithBalances[i].basePriceFeedKey = pools[i].basePriceFeedKey;
             poolsWithBalances[i].quotePriceFeedKey = pools[i].quotePriceFeedKey;
             poolsWithBalances[i].hEthBal = pools[i].hEthBal;
@@ -964,10 +967,21 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             poolsWithBalances[i].poolType = pools[i].poolType;
             poolsWithBalances[i].cBalancePreview = cEthBalPreview;
             poolsWithBalances[i].hBalancePreview = hEthBalPreview;
-            poolsWithBalances[i].userCEthBalPreview = previewUserCEthBalance(
-                pools[i].id,
-                _user
-            );
+            if (pools[i].parentId != 0) {
+                // if pool has a parent pool, get cEth balance for user in parent pool (sum of all children)
+                poolsWithBalances[i]
+                    .userCEthBalPreview = previewParentUserCEthBalance(
+                    pools[i].id,
+                    _user
+                );
+            } else {
+                // if pool has no parent pool, get cEth balance for user in single pool
+                poolsWithBalances[i]
+                    .userCEthBalPreview = previewUserCEthBalance(
+                    pools[i].id,
+                    _user
+                );
+            }
             poolsWithBalances[i].userHEthBalPreview = previewUserHEthBalance(
                 pools[i].id,
                 _user

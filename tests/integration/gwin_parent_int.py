@@ -9,8 +9,6 @@ import pytest
 # NOTE: The build folder must be deleted when new chain is initialized
 # this is temporary, easy to work around, and will be fixed when there is time
 
-# NOTE 2: Be sure to set the deploy_pools variable to FALSE in deploy.py before running tests
-
 def test_use_protocol():
     # Arrange
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
@@ -28,7 +26,7 @@ def test_use_protocol():
     pool_h_rate = 100_0000000000 # 2x leverage
     pool_c_rate = -100_0000000000 # stable
 
-    tx = gwin_protocol.initializePool(pool_type, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", pool_c_rate, pool_h_rate, {"from": account, "value": Web3.toWei(20, "ether")})
+    tx = gwin_protocol.initializePool(pool_type, parent_id, eth_usd_price_feed.address, "0x4554482f555344", "0x0000000000000000000000000000000000000000", "0x0", pool_c_rate, pool_h_rate, {"from": account, "value": Web3.toWei(20, "ether")})
     tx.wait(1)
     pool_2x_id = 0
 
@@ -42,7 +40,7 @@ def test_use_protocol():
     pool_h_rate = 400_0000000000 # 5x leverage
     pool_c_rate = -100_0000000000 # stable
 
-    tx = gwin_protocol.initializePool(pool_type, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", pool_c_rate, pool_h_rate, {"from": account, "value": Web3.toWei(20, "ether")})
+    tx = gwin_protocol.initializePool(pool_type, parent_id, eth_usd_price_feed.address, "0x4554482f555344", "0x0000000000000000000000000000000000000000", "0x0", pool_c_rate, pool_h_rate, {"from": account, "value": Web3.toWei(20, "ether")})
     tx.wait(1)
     pool_5x_id = 1
 
@@ -58,7 +56,7 @@ def test_use_protocol():
     pool_h_rate = 900_0000000000 # 10x leverage
     pool_c_rate = -100_0000000000 # stable
 
-    tx = gwin_protocol.initializePool(pool_type, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", pool_c_rate, pool_h_rate, {"from": account, "value": Web3.toWei(20, "ether")})
+    tx = gwin_protocol.initializePool(pool_type, parent_id, eth_usd_price_feed.address, "0x4554482f555344", "0x0000000000000000000000000000000000000000", "0x0", pool_c_rate, pool_h_rate, {"from": account, "value": Web3.toWei(20, "ether")})
     tx.wait(1)
     pool_10x_id = 2
 
@@ -108,7 +106,10 @@ def test_use_protocol():
     # 17_158420000
     assert rnd(rounded(gwin_protocol.getParentPoolHEthBalance.call(pool_2x_id, {"from": account}))) == rnd(17_4356435643) # hEth in parent pool
     # 43_841590000
+    assert rnd(rounded(gwin_protocol.getEstCEthInParentPool.call(pool_2x_id, 1010_00000000, {"from": account}))) == rnd(43_5643564356) # cEth in parent pool
     assert rnd(rounded(gwin_protocol.getParentPoolCEthBalance.call(pool_2x_id, {"from": account}))) == rnd(43_5643564356) # cEth in parent pool
+    # Act -- test if preview shows correct cEth balance before transaction
+    assert rnd(rounded(gwin_protocol.previewParentUserCEthBalance.call(pool_2x_id, account.address, {"from": account}))) == rnd(43_5643564356) # est cEth in parent pool
 
     assert rnd(rounded(gwin_protocol.retrieveProtocolCEthBalance.call(pool_2x_id, {"from": account}))) == rnd(10_2145249037) # cEth in protocol
     assert rnd(rounded(gwin_protocol.retrieveProtocolHEthBalance.call(pool_2x_id, {"from": account}))) == rnd(11_0990099010) # hEth in protocol
@@ -210,15 +211,15 @@ def test_use_protocol():
     # Assert
     assert rnd(rounded(userHEthEst)) == rnd(3_3463699892) # this is before deposit
 
-    # Act -- test if preview shows correct hEth balance before transaction
+    # Act -- test if preview shows correct cEth balance before transaction
     userCEthEst = gwin_protocol.previewParentUserCEthBalance.call(pool_2x_id, account.address, {"from": account})
     # Assert
     assert rnd(rounded(userCEthEst)) == rnd(45_8808359986) # this is before deposit
 
     # Act -- test if preview shows correct cEth balance before transaction with price inputed
-    userCEthEst = gwin_protocol.previewParentUserCEthBalanceAtPrice.call(pool_2x_id, 960_00000000, account.address, {"from": account})
+    userCEthEstAtPrice = gwin_protocol.previewParentUserCEthBalanceAtPrice.call(pool_2x_id, 960_00000000, account.address, {"from": account})
     # Assert
-    assert rnd(rounded(userCEthEst)) == rnd(45_8808359986) # this is before deposit
+    assert rnd(rounded(userCEthEstAtPrice)) == rnd(45_8808359986) # this is before deposit
 
 
 
@@ -311,7 +312,7 @@ def test_use_protocol():
     assert gwin_protocol.retrieveCurrentPrice(pool_2x_id, {"from": account}) == 979_20000000
 
 
-    # Act -- test if preview shows correct hEth balance before transaction
+    # Act -- test if preview shows correct cEth balance before transaction
     userCEthEst = gwin_protocol.previewParentUserCEthBalance.call(pool_2x_id, non_owner.address, {"from": account})
     # Assert
     assert rnd(rounded(userCEthEst)) == rnd(9814828225) # this is before deposit
