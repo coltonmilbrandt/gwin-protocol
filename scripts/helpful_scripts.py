@@ -213,6 +213,8 @@ def deploy_mock_protocol_in_use():
     )
     eth_usd_price_feed = get_contract("eth_usd_price_feed")
     xau_usd_price_feed = get_contract("xau_usd_price_feed")
+    btc_usd_price_feed = get_contract("btc_usd_price_feed")
+    jpy_usd_price_feed = get_contract("jpy_usd_price_feed")
     eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account})
     xau_usd_price_feed.updateAnswer(Web3.toWei(1600, "ether"), {"from": account})
     tx = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
@@ -242,7 +244,7 @@ def deploy_mock_protocol_in_use():
     txThree = gwin_protocol.withdrawFromTranche(0, True, False, 0, 0, True, {"from": non_owner})
     txThree.wait(1)
 
-    return gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed
+    return gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed
 
 def rounded(val):
     val = val / 100000000

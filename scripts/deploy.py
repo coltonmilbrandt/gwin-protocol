@@ -32,7 +32,7 @@ def deploy_gwin_protocol_and_gwin_token():
     tx1 = gwin_ERC20.transfer(gwin_protocol.address, gwin_ERC20.totalSupply() - KEPT_BALANCE, {"from": account})
     tx1.wait(1)
 
-    return gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed
+    return gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed
 
 def main():
     deploy_gwin_protocol_and_gwin_token()
