@@ -2,8 +2,7 @@ from brownie import GwinToken, GwinProtocol, network, config, web3
 from scripts.helpful_scripts import deploy_mocks, get_account, get_contract, fund_with_link, LOCAL_BLOCKCHAIN_ENVIRONMENTS, TEST_BLOCKCHAIN_ENVIRONMENTS, NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
 from web3 import Web3
 
-# NOTE: The build folder must be deleted when new chain is initialized
-# this is temporary, easy to work around, and will be fixed when there is time
+# NOTE: If you start a new instance of Ganache etc., be sure to delete the previous deployments in the build folder
 
 KEPT_BALANCE = Web3.toWei(100, "ether")
 

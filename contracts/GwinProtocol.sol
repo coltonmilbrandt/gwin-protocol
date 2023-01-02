@@ -90,6 +90,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint256 cEthBal;
         int256 hRate;
         int256 cRate;
+        uint hHealth;
+        uint cHealth;
         uint8 poolType;
         uint cBalancePreview;
         uint hBalancePreview;
@@ -538,14 +540,26 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     address addrC = ethStakers[_poolId][ethStakersIndex];
                     if (parentPoolId[_poolId] == 0) {
                         // track by single pool
-                        ethStakedBalance[_poolId][addrC].cPercent =
+                        if (pool[_poolId].cEthBal == 0) {
+                            // if pool cEth balance is zero, user balance is zero
+                            ethStakedBalance[_poolId][addrC].cPercent = 0;    
+                        } else {
+                            // if pool cEth bal is positive, use user bal to calculate percent
+                            ethStakedBalance[_poolId][addrC].cPercent =
                             (ethStakedBalance[_poolId][addrC].cBal * bps) /
                             pool[_poolId].cEthBal;
+                        }
                     } else {
                         // track by parent pool
-                        ethStakedWithParent[parentId][addrC].cPercent =
+                        if (parentPoolBal[parentId].cEthBal == 0) {
+                            // if parent cEth balance is zero, user balance is zero
+                            ethStakedWithParent[parentId][addrC].cPercent = 0;    
+                        } else {
+                            // if parent cEth bal is positive, use user bal to calculate percent
+                            ethStakedWithParent[parentId][addrC].cPercent =
                             (ethStakedWithParent[parentId][addrC].cBal * bps) /
                             parentPoolBal[parentId].cEthBal;
+                        }
                     }
                 }
             } else if (_isCooled == false && _isHeated == true) {
@@ -557,9 +571,15 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 ) {
                     // heated percentages are always by single pool
                     address addrC = ethStakers[_poolId][ethStakersIndex];
-                    ethStakedBalance[_poolId][addrC].hPercent =
+                    if (pool[_poolId].hEthBal == 0) {
+                        // if pool hEth bal is zero, user percent is also zero
+                        ethStakedBalance[_poolId][addrC].hPercent = 0;    
+                    } else {
+                        // if pool hEth bal is positive, use user bal to calculate percent
+                        ethStakedBalance[_poolId][addrC].hPercent =
                         (ethStakedBalance[_poolId][addrC].hBal * bps) /
                         pool[_poolId].hEthBal;
+                    }
                 }
             } else {
                 // Cooled and Heated tranche percentage numbers are affected by tx
@@ -571,19 +591,37 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     address addrC = ethStakers[_poolId][ethStakersIndex];
                     if (parentPoolId[_poolId] == 0) {
                         // track by single pool
-                        ethStakedBalance[_poolId][addrC].cPercent =
+                        if (pool[_poolId].cEthBal == 0) {
+                            // if pool cEth bal is zero, user % is also zero
+                            ethStakedBalance[_poolId][addrC].cPercent = 0;    
+                        } else {
+                            // if pool cEth bal exists, use user bal to calculate percent
+                            ethStakedBalance[_poolId][addrC].cPercent =
                             (ethStakedBalance[_poolId][addrC].cBal * bps) /
                             pool[_poolId].cEthBal;
+                        }
                     } else {
                         // track by parent pool
-                        ethStakedWithParent[parentId][addrC].cPercent =
+                        if (parentPoolBal[parentId].cEthBal == 0) {
+                            // if parent pool cEth bal is zero, user % is also zero
+                            ethStakedWithParent[parentId][addrC].cPercent = 0;
+                        } else {
+                            // if parent cEth bal is positive, use user bal to calculate percent
+                            ethStakedWithParent[parentId][addrC].cPercent =
                             (ethStakedWithParent[parentId][addrC].cBal * bps) /
                             parentPoolBal[parentId].cEthBal;
+                        }
                     }
                     // track heated by single pool
-                    ethStakedBalance[_poolId][addrC].hPercent =
+                    if (pool[_poolId].hEthBal == 0) {
+                        // if pool hEth bal is zero, user % is also zero
+                        ethStakedBalance[_poolId][addrC].hPercent = 0;    
+                    } else {
+                        // if pool hEth bal is positive, use user bal to calculate percent
+                        ethStakedBalance[_poolId][addrC].hPercent =
                         (ethStakedBalance[_poolId][addrC].hBal * bps) /
                         pool[_poolId].hEthBal;
+                    }
                 }
             }
         }
@@ -929,6 +967,27 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (hEthBalEst, cEthBalEst);
     }
 
+    function getPoolHealth(
+        uint _poolId,
+        bool _isCooled
+    ) public view returns (uint) {
+        uint health;
+        // calculate expected cEth percent of paired pools
+        int cEthPercent = (abs(pool[_poolId].hRate) * int(bps)) /
+            (abs(pool[_poolId].hRate) + abs(pool[_poolId].cRate));
+        // calculate actual cEth percent of paired pools
+        uint256 cooledRatio = ((pool[_poolId].cEthBal * bps) /
+            (pool[_poolId].cEthBal + pool[_poolId].hEthBal));
+        if (_isCooled == true) {
+            //            expected         actual
+            health = (uint(cEthPercent) * 100) / cooledRatio;
+        } else {
+            //          actual          expected
+            health = (cooledRatio * 100) / uint(cEthPercent);
+        }
+        return health;
+    }
+
     // GET ALL POOLS - get an array of all the Pool structs that exist
     function getAllPools() public view returns (Pool[] memory) {
         Pool[] memory pools = new Pool[](poolIds.length);
@@ -964,6 +1023,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             poolsWithBalances[i].cEthBal = pools[i].cEthBal;
             poolsWithBalances[i].hRate = pools[i].hRate;
             poolsWithBalances[i].cRate = pools[i].cRate;
+            poolsWithBalances[i].hHealth = getPoolHealth(pools[i].id, false);
+            poolsWithBalances[i].cHealth = getPoolHealth(pools[i].id, true);
             poolsWithBalances[i].poolType = pools[i].poolType;
             poolsWithBalances[i].cBalancePreview = cEthBalPreview;
             poolsWithBalances[i].hBalancePreview = hEthBalPreview;
@@ -1047,6 +1108,14 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (allocationDifference, trancheChange, nonNaturalRatio);
     }
 
+    function bothPoolsHaveBalance(uint _poolId) public view returns (bool) {
+        if (pool[_poolId].cEthBal == 0 || pool[_poolId].hEthBal == 0) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
     //@@  INTERACT  @@// - rebalances the cooled and heated tranches/pools
     function interact(uint _poolId) private {
         // get current price to determine profit
@@ -1054,6 +1123,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         pool[_poolId].currentUsdPrice = currentAssetUsd;
         int256 assetUsdProfit = getProfit(_poolId, currentAssetUsd); // returns ETH/USD profit in terms of basis points
         if (assetUsdProfit == 0) {
+            // if price hasn't changed, balances have not changed
+            return;
+        }
+        if (bothPoolsHaveBalance(_poolId) == false) {
+            // skip if there is not opposing balances to settle
             return;
         }
 

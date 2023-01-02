@@ -5,8 +5,7 @@ from scripts.deploy import deploy_gwin_protocol_and_gwin_token
 from web3 import Web3
 import pytest
 
-# NOTE: The build folder must be deleted when new chain is initialized
-# this is temporary, easy to work around, and will be fixed when there is time
+# NOTE: If you start a new instance of Ganache etc., be sure to delete the previous deployments in the build folder
 
 def test_use_protocol():
     # Arrange

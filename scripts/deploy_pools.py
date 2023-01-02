@@ -3,17 +3,18 @@ from pyparsing import null_debug_action
 from scripts.helpful_scripts import LOCAL_BLOCKCHAIN_ENVIRONMENTS, INITIAL_VALUE, DECIMALS, get_account, get_contract, rounded, roundedDec, extra_rounded, rnd
 from scripts.deploy import deploy_gwin_protocol_and_gwin_token
 from web3 import Web3
-import pytest
 
-# NOTE: The build folder must be deleted when new chain is initialized
-# this is temporary, easy to work around, and will be fixed when there is time
+# NOTE: If you start a new instance of Ganache etc., be sure to delete the previous deployments in the build folder
 
-# 'amount' is amount of ETH you wish to distribute between all the pools
-def main(amount):
-    # Arrange
+def main():
+    # 'amount' determined by environment - i.e. the ETH you wish to distribute between all the pools
+    if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        amount = 100
+    else:
+        amount = 0.6
+    
     account = get_account() # Protocol 
     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
-    amount = amount / 6
 
     #@@@@@@@@@@@@| Create 2x ETH/USD pool with stable parent |@@@@@@@@@@@@#
     parent_id = 1 # parent ID: 1
@@ -65,7 +66,7 @@ def main(amount):
     pool_c_rate = -100_0000000000 # stable
     tx = gwin_protocol.initializePool(pool_type, parent_id, eth_usd_price_feed.address, "0x4554482f555344", jpy_usd_price_feed.address, "0x4a50592f555344", pool_c_rate, pool_h_rate, {"from": account, "value": Web3.toWei(amount, "ether")})
     tx.wait(1)
-    pool_JPY_id = 4
+    pool_JPY_id = 5
 
     # Print contract address
     print(f"gwin deployed to: " + gwin_protocol.address)

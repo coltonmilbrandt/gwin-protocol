@@ -15,6 +15,8 @@ import time
 import math
 import pytest
 
+# NOTE: If you start a new instance of Ganache etc., be sure to delete the previous deployments in the build folder
+
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["hardhat", "development", "ganache"]
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
     "mainnet-fork",
@@ -92,9 +94,11 @@ def get_contract(contract_name):
     contract_type = contract_to_mock[contract_name]
     if network.show_active() in NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         if contract_type == MockV3Aggregator:
+            print(f"deploying: " + contract_name)
             deploy_mocks(contract_decimals[contract_name], contract_initial_value[contract_name])
         else:
             if len(contract_type) <= 0:
+                print(f"deploying: " + contract_name)
                 deploy_mocks()
         contract = contract_type[-1]
     else:
@@ -140,7 +144,7 @@ def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_VALUE):
     mock_price_feed = MockV3Aggregator.deploy(
         decimals, initial_value, {"from": account}
     )
-    print(f"Deployed to {mock_price_feed.address}")
+    print(f"Deployed mock price feed to {mock_price_feed.address}")
 
     # print("Deploying Mock VRFCoordinator...")
     # mock_vrf_coordinator = VRFCoordinatorV2Mock.deploy(
