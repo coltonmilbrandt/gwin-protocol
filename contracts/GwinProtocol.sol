@@ -233,6 +233,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint parentId = parentPoolId[poolId];
         if (parentId != 0) {
             uint cEthForBalance = cEthNeededForPools(poolId); // total cEth needed
+            if (cEthForBalance == 0) {
+                // this happens if there is no hEth in pools, so 'return', no need to rebalance
+                return;
+            }
             uint cEthStakedToTargetedRatio = (parentPoolBal[parentId].cEthBal *
                 bps) / cEthForBalance; // percent of actual eth to amount needed for balance (bps)
             for (
@@ -242,21 +246,25 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             ) {
                 uint poolIdIndex = parentPoolBal[parentId].childPoolIds[i];
                 int cethPerHeth = cethPerHethTarget(poolIdIndex);
-                if (cEthStakedToTargetedRatio <= bps) {
-                    // underweight cooled allocation to each child pool
-                    pool[poolIdIndex].cEthBal =
-                        (pool[poolIdIndex].hEthBal *
-                            uint(cethPerHeth) *
-                            cEthStakedToTargetedRatio) /
-                        bps;
+                if (parentPoolBal[parentId].cEthBal == 0) {
+                    pool[poolIdIndex].cEthBal = 0;
                 } else {
-                    // overweight cooled allocation to each child pool
-                    uint cEthOverEven = parentPoolBal[parentId].cEthBal -
-                        cEthForBalance;
-                    pool[poolIdIndex].cEthBal =
-                        (pool[poolIdIndex].hEthBal * uint(cethPerHeth)) +
-                        (cEthOverEven /
-                            parentPoolBal[parentId].childPoolIds.length);
+                    if (cEthStakedToTargetedRatio <= bps) {
+                        // underweight cooled allocation to each child pool
+                        pool[poolIdIndex].cEthBal =
+                            (pool[poolIdIndex].hEthBal *
+                                uint(cethPerHeth) *
+                                cEthStakedToTargetedRatio) /
+                            bps;
+                    } else {
+                        // overweight cooled allocation to each child pool
+                        uint cEthOverEven = parentPoolBal[parentId].cEthBal -
+                            cEthForBalance;
+                        pool[poolIdIndex].cEthBal =
+                            (pool[poolIdIndex].hEthBal * uint(cethPerHeth)) +
+                            (cEthOverEven /
+                                parentPoolBal[parentId].childPoolIds.length);
+                    }
                 }
             }
         }
@@ -306,7 +314,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             if (parentPoolId[_poolId] != 0) {
                 // add to parent balance
                 ethStakedWithParent[parentId][msg.sender].cBal += msg.value;
-                parentPoolBal[parentId].cEthBal += msg.value; // ISSUE?
+                parentPoolBal[parentId].cEthBal += msg.value;
             } else {
                 ethStakedBalance[_poolId][msg.sender].cBal += msg.value;
             }
