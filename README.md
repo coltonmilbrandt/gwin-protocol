@@ -16,6 +16,8 @@
 
 Inspired by how the best DeFi projects work at small scale and large, Gwin allows you to launch a working market with just a price feed and then let that market grow organically as interest increases. The platform algorithmically ensures best performance available, even in markets with limited liquidity. This allows you to create and confidently trade in even the most obscure and growing markets, knowing that your transactions will be executed at their best potential, without concerns about exit liquidity or costly exposure in a lopsided trade.
 
+Gwin has [a great front-end](https://github.com/coltonmilbrandt/gwin-app) that can be used along with this smart contract.
+
 Want to learn more? Check out the [full documentation.](https://coltonmilbrandt.gitbook.io/gwin/)
 
 ## Prerequisites
@@ -96,11 +98,11 @@ ganache
 brownie run scripts/deploy.py --network ganache
 ```
 
-### Local Pool Deployment, with Front-End and Metamask
+### Local Pool Deployment with Front-End and Metamask
 
 This will deploy the Gwin smart contract with multiple pools to your local chain with ganache and then allow you to trade.
 
-> The deploy_pools.py script will change the price feeds up in 1% increments to 10% higher than the original price and then down in 1% increments to 10% lower than the original price, changing multiple times per minute, so that you can experience price movements more quickly. Eventually, the while loop doing this will terminate.
+> The deploy_pools.py script will repeatedly change the price feeds up in 1% increments to 10% higher than the original price and then down in 1% increments to 10% lower than the original price, changing multiple times per minute, so that you can experience price movements quickly and predictably. Eventually, the while loop doing this will terminate.
 
 1. Compile the contract
 
@@ -148,9 +150,9 @@ Deployed mock price feed to 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
 
 ## Running Scripts and Deployment on Goerli Test Net
 
-### Basic Local Deployment
+### Basic Goerli Test Net Deployment
 
-This will deploy the Gwin smart contract to your local chain with ganache.
+This will deploy the Gwin smart contract to Goerli.
 
 1. Compile the contract
 
@@ -160,13 +162,15 @@ brownie compile
 
 > Note: You may need to clear the build folder between deployments and testing, particulary when you change networks. You can safely delete the build folder so that the proper contract is referenced.
 
-2. Run deploy script with ganache network flag
+2. Run deploy script with goerli network flag
 
 ```
 brownie run scripts/deploy.py --network goerli
 ```
 
-### Test Net Pool Deployment, with Front-End and Metamask
+After this, if you set it up properly for Etherscan, you can interact with the verified contract via their interface.
+
+### Goerli Test Net Pool Deployment with Front-End and Metamask
 
 This will deploy the Gwin smart contract with multiple pools to the Goerli Test Net and then allow you to trade. The deploy_pools.py script will create multiple pools to start you off.
 
@@ -178,9 +182,11 @@ This will deploy the Gwin smart contract with multiple pools to the Goerli Test 
 brownie compile
 ```
 
-3. Set up your private key (use a test wallet!) and run deploy script with goerli network flag and copy contract address from logs
+3. Set up your private key (use a test wallet!) and run deploy script with goerli network flag and copy contract address from logs.
 
 > Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache or change networks. You can safely delete the build folder so that the proper contract is referenced.
+
+> Note: Make sure you have enough test ETH. Change the amount in the deploy_pools.py script if needed, and make sure you have enough left for gas.
 
 ```
 brownie run scripts/deploy_pools.py --network goerli
@@ -201,3 +207,67 @@ Price feeds will be determined by the established Goerli addresses, so no need t
 6. Launch front-end with `yarn dev` and connect your MetaMask wallet with the same keys that you used to deploy the contract (that way you can get your test ETH back, if you want).
 
 7. Now you can Deposit and Withdraw to pools ([see how trading works](https://coltonmilbrandt.gitbook.io/gwin/features/trade)). Keep in mind that without market forces at work, it's easy to create interesting scenarios that otherwise wouldn't naturally arise with other traders participating and taking advantage of underweight (high health) pools. Read more about this in [the documentation](https://coltonmilbrandt.gitbook.io/gwin/technical-details/how-pools-are-settled). Also note that you can create pools as well. Read about that [right here](https://coltonmilbrandt.gitbook.io/gwin/technical-details/creating-a-new-market).
+
+## Testing with Ganache
+
+### Unit Tests
+
+Unit tests include tests for:
+
+-   Initializing Pools
+-   Basic Deposit
+-   Basic Withdrawal
+-   Deposit Exploit Guard
+-   Liquidation
+-   Getting Accounts
+-   Balance Estimate Accuracy
+-   Zero Amount Deposits
+-   Withdrawal Greater than Balance
+-   Etc.
+
+Run these tests with:
+
+```
+brownie test tests/unit/gwin_unit.py --network ganache
+```
+
+> Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache or change networks. You can safely delete the build folder so that the proper contract is referenced.
+
+### Integration Tests
+
+This broad integration test includes a robust script that compares the underlying math model's expected values with what the protocol calculates, verifying accuracy with extensive testing of a wide range of accumulating activity:
+
+-   Initializing Pools
+-   Varying Types of Pools
+-   A Variety of Deposits
+-   A Variety of Withdrawals
+
+Run this test with:
+
+```
+brownie test tests/integration/gwin_int.py --network ganache
+```
+
+> Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache or change networks. You can safely delete the build folder so that the proper contract is referenced.
+
+### Parent Pool Test
+
+Like the previous broad integration test, but this script tests parent pool type transactions to verify accuracy with extensive testing of a wide range of accumulating activity:
+
+-   Initializing Pools
+-   A Variety of Deposits
+-   A Variety of Withdrawals
+
+Run this test with:
+
+```
+brownie test tests/integration/gwin_parent_int.py --network ganache
+```
+
+> Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache or change networks. You can safely delete the build folder so that the proper contract is referenced.
+
+# Contact Me
+
+If you have any questions, want some help setting it up, want to contribute, etc. please email me at coltonmilbrandt@gmail.com!
+
+Read the [full docs](https://coltonmilbrandt.gitbook.io/gwin/) to learn more.
