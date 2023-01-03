@@ -14,13 +14,13 @@
 
 ### Launch and Trade Markets with Any Price Feed
 
-Inspired by how the best DeFi projects work at small scale and large, Gwin allows you to launch a working market with just a price feed and then let that market grow organically as interest increases. The platform algorithmically ensures best performance available, even in markets with limited liquidity. This allows you to create and confidently trade in even the most obscure and growing markets, knowing that your trades will be executed at their best potential, without concerns about exit liquidity or costly exposure in a lopsided trade.
+Inspired by how the best DeFi projects work at small scale and large, Gwin allows you to launch a working market with just a price feed and then let that market grow organically as interest increases. The platform algorithmically ensures best performance available, even in markets with limited liquidity. This allows you to create and confidently trade in even the most obscure and growing markets, knowing that your transactions will be executed at their best potential, without concerns about exit liquidity or costly exposure in a lopsided trade.
 
 Want to learn more? Check out the [full documentation.](https://coltonmilbrandt.gitbook.io/gwin/)
 
 ## Prerequisites
 
-Please install or have installed the following:
+Please install or have the following installed:
 
 -   [nodejs v16.15.0](https://nodejs.org/en/download/)
 -   [python](https://www.python.org/downloads/)
@@ -38,7 +38,7 @@ python3 -m pipx ensurepath
 pipx install eth-brownie
 ```
 
-Or, if that doesn't work, via pip
+Or, if that doesn't work, try pip
 
 ```
 pip install eth-brownie
@@ -88,17 +88,19 @@ brownie compile
 ganache
 ```
 
+> Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache. You can safely delete the build folder so that the proper contract is referenced.
+
 3. Run deploy script with ganache network flag
 
 ```
 brownie run scripts/deploy.py --network ganache
 ```
 
-> Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache. You can safely delete the build folder so that the proper contract is referenced.
-
 ### Local Pool Deployment, with Front-End and Metamask
 
-This will deploy the Gwin smart contract with multiple pools to your local chain with ganache and then allow you to trade. The deploy_pools.py script will change the price feeds up in 1% increments to 10% higher than the original price and then down in 1% increments to 10% lower than the original price, changing multiple times per minute, so that you can experience price movements more quickly.
+This will deploy the Gwin smart contract with multiple pools to your local chain with ganache and then allow you to trade.
+
+> The deploy_pools.py script will change the price feeds up in 1% increments to 10% higher than the original price and then down in 1% increments to 10% lower than the original price, changing multiple times per minute, so that you can experience price movements more quickly. Eventually, the while loop doing this will terminate.
 
 1. Compile the contract
 
@@ -111,6 +113,8 @@ brownie compile
 ```
 ganache
 ```
+
+> Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache. You can safely delete the build folder so that the proper contract is referenced.
 
 3. Run deploy script with ganache network flag and copy contract address from logs
 
@@ -142,6 +146,26 @@ Deployed mock price feed to 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
 
 8. Now you can Deposit and Withdraw to pools, go long when ETH/USD is around $900 and withdraw, short, or go stable when ETH/USD is around $1,100 ([see how trading works](https://coltonmilbrandt.gitbook.io/gwin/features/trade)). Keep in mind that without market forces at work, it's easy to create interesting scenarios that otherwise wouldn't naturally arise with other traders participating and taking advantage of underweight (high health) pools. Read more about this in [the documentation](https://coltonmilbrandt.gitbook.io/gwin/technical-details/how-pools-are-settled). Also note that you can create pools as well. Read about that [right here](https://coltonmilbrandt.gitbook.io/gwin/technical-details/creating-a-new-market), just make sure that you use price feed addresses from the logs in Step 3.
 
+## Running Scripts and Deployment on Goerli Test Net
+
+### Basic Local Deployment
+
+This will deploy the Gwin smart contract to your local chain with ganache.
+
+1. Compile the contract
+
+```
+brownie compile
+```
+
+> Note: You may need to clear the build folder between deployments and testing, particulary when you change networks. You can safely delete the build folder so that the proper contract is referenced.
+
+2. Run deploy script with ganache network flag
+
+```
+brownie run scripts/deploy.py --network goerli
+```
+
 ### Test Net Pool Deployment, with Front-End and Metamask
 
 This will deploy the Gwin smart contract with multiple pools to the Goerli Test Net and then allow you to trade. The deploy_pools.py script will create multiple pools to start you off.
@@ -155,6 +179,8 @@ brownie compile
 ```
 
 3. Set up your private key (use a test wallet!) and run deploy script with goerli network flag and copy contract address from logs
+
+> Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache or change networks. You can safely delete the build folder so that the proper contract is referenced.
 
 ```
 brownie run scripts/deploy_pools.py --network goerli
