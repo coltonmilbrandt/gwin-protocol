@@ -22,15 +22,17 @@ Want to learn more? [Check out the documentation.](https://coltonmilbrandt.gitbo
 
 Please install or have installed the following:
 
-[nodejs v16.15.0](https://nodejs.org/en/download/)
-[python](https://www.python.org/downloads/)
-Yarn
-`npm install --global yarn`
+-   [nodejs v16.15.0](https://nodejs.org/en/download/)
+-   [python](https://www.python.org/downloads/)
+-   Yarn `npm install --global yarn`
 
 Installation
 Install Brownie, if you haven't already. Here is a simple way to install brownie.
+
+```
 python3 -m pip install --user pipx
 python3 -m pipx ensurepath
+```
 
 # restart your terminal
 
