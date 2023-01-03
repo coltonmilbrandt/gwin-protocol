@@ -70,7 +70,7 @@ yarn add global ganache-cli
 
 All the scripts are designed to work locally or on a testnet.
 
-## Running Scripts and Deployment
+## Running Scripts and Deployment Locally
 
 ### Basic Deployment
 
@@ -96,9 +96,9 @@ brownie run scripts/deploy.py --network ganache
 
 > Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache. You can safely delete the build folder so that the proper contract is referenced.
 
-### Pool Deployment, Test with Metamask
+### Pool Deployment, Test Locally with Metamask
 
-This will deploy the Gwin smart contract with multiple pools to your local chain with ganache.
+This will deploy the Gwin smart contract with multiple pools to your local chain with ganache and then allow you to trade. The deploy_pools.py script will change the price feeds up in 1% increments to 10% higher than the original price and then down in 1% increments to 10% lower than the original price, changing multiple times per minute, so that you can experience price movements more quickly.
 
 1. Compile the contract
 
@@ -136,6 +136,8 @@ Deployed mock price feed to 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
 
 5. Insert contract address of your local Gwin smart contract on ganache (from step 3) into the code for the front-end as described in the front end docs [here](https://github.com/coltonmilbrandt/gwin-app.git).
 
-6. Copy the private key for Account (1), and use it to 'Import Account' on MetaMask.
+6. Copy the private key for Account (1), and use it to 'Import Account' on MetaMask. Accounts (1-3) are generally your best choice as Account (0) initially funds the pools and Account (4) updates the price feeds.
 
 7. Launch front-end with `yarn dev` and connect your MetaMask via Localhost 8545.
+
+8. Now you can Deposit and Withdraw to pools, go long when ETH/USD is around $900 and sell, short, or go stable when ETH/USD is around $1,100. Keep in mind that without market forces at work, it's easy to create interesting scenarios that otherwise wouldn't naturally arise with other traders participating and taking advantage of underweight (high health) pools. Read more about this in [the documentation](https://coltonmilbrandt.gitbook.io/gwin/technical-details/how-pools-are-settled). Also note that you can create pools as well, read about that [right here](https://coltonmilbrandt.gitbook.io/gwin/technical-details/creating-a-new-market).
