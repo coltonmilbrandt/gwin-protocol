@@ -21,6 +21,7 @@ Gwin has a great [front-end](https://github.com/coltonmilbrandt/gwin-app) that c
 ### Want to learn more?
 
 Check out the [full documentation.](https://coltonmilbrandt.gitbook.io/gwin/)
+
 Look through [the FAQs](https://coltonmilbrandt.gitbook.io/gwin/faqs)
 
 ## Key Features
@@ -47,6 +48,8 @@ Look through [the FAQs](https://coltonmilbrandt.gitbook.io/gwin/faqs)
         -   [Unit Tests](https://github.com/coltonmilbrandt/gwin-protocol#unit-tests)
         -   [Integration Tests](https://github.com/coltonmilbrandt/gwin-protocol#integration-tests)
         -   [Parent Pool Test](https://github.com/coltonmilbrandt/gwin-protocol#parent-pool-test)
+    -   [Status](https://github.com/coltonmilbrandt/gwin-protocol#status)
+    -   [Contributing](https://github.com/coltonmilbrandt/gwin-protocol#contributing)
     -   [Contact Me](https://github.com/coltonmilbrandt/gwin-protocol#contact-me)
     -   [Learn More About Gwin](https://github.com/coltonmilbrandt/gwin-protocol#learn-more-about-gwin)
 
