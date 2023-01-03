@@ -68,3 +68,18 @@ yarn add global ganache-cli
 ```
 
 All the scripts are designed to work locally or on a testnet.
+
+## Running Scripts and Deployment
+
+### Basic Deployment
+
+This will deploy the Gwin smart contract to your local chain with ganache.
+
+```
+# compile the contract
+brownie compile
+# start ganache and take note of private keys
+ganache
+# run deploy script with ganache network flag
+brownie run scripts/deploy.py --network ganache
+```
