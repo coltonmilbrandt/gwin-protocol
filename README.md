@@ -293,9 +293,9 @@ brownie test tests/integration/gwin_parent_int.py --network ganache
 -   Need some help setting up?
 -   Want to contribute?
 
-### Please email me at coltonmilbrandt@gmail.com!
+### Email me at coltonmilbrandt@gmail.com!
 
-### See my website at [coltonmilbrandt.com](www.coltonmilbrandt.com)
+### Check out my website [www.coltonmilbrandt.com](https://coltonmilbrandt.com/)
 
 ## Learn More About Gwin
 
