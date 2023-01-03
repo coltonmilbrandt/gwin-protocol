@@ -386,7 +386,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         // Interact to rebalance Tranches with new price feed value
         interactByPool(_poolId);
         // Re-adjust the user balances based on price change
-        reAdjust(_poolId, true, _isCooled, _isHeated);
+        reAdjust(_poolId, true, _isCooled, _isHeated); 
 
         // if withdrawing all, set amount according to pool or parent pool user balance
         if (_isAll == true) {
@@ -434,13 +434,18 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         } else {
             if (_cAmount > 0 && _hAmount == 0) {
                 // Cooled, No Heated
-                pool[_poolId].cEthBal -= _cAmount;
                 if (parentPoolId[_poolId] != 0) {
-                    // deduct from parent balance
+                    // deduct from user's parent balance
                     ethStakedWithParent[parentId][msg.sender].cBal -= _cAmount;
+                    // deduct from parent balance
                     parentPoolBal[parentId].cEthBal -= _cAmount;
+                    // reAdjustChildPools will rebalance child cEth bals at end of function, 
+                    // so no need to adjust singular pool balances
                 } else {
+                    // deduct from user's pool balance
                     ethStakedBalance[_poolId][msg.sender].cBal -= _cAmount;
+                    // adjust singular pool cEth bal ONLY IF not part of parent pool
+                    pool[_poolId].cEthBal -= _cAmount;
                 }
                 payable(msg.sender).transfer(_cAmount);
             } else if (_cAmount == 0 && _hAmount > 0) {
@@ -643,7 +648,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             ethStakersIndex < ethStakers[_poolId].length;
             ethStakersIndex++
         ) {
+            uint parentId = parentPoolId[_poolId];
             address addrC = ethStakers[_poolId][ethStakersIndex];
+            if (parentId != 0 && parentPoolBal[parentId].cEthBal == 0) {
+                ethStakedWithParent[parentId][addrC].cPercent = 0;
+                ethStakedWithParent[parentId][addrC].cBal = 0;
+            }
             if (pool[_poolId].cEthBal == 0) {
                 // if pool is liquidated, reset user to zero
                 ethStakedBalance[_poolId][addrC].cPercent = 0;
@@ -925,9 +935,14 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         uint _price,
         address _user
     ) public view returns (uint) {
-        uint perc = getParentUserCEthPercent(_poolId, _user); // this line is good I think
-        uint bal = getEstCEthInParentPool(_poolId, _price); // this line passes in test
+        uint perc = getParentUserCEthPercent(_poolId, _user);
+        uint bal = getEstCEthInParentPool(_poolId, _price);
         return (bal * perc) / bps;
+    }
+
+    function seeUserParentPoolBal(uint _poolId, address _user) public view returns (uint) {
+        uint parentId = parentPoolId[_poolId];
+        return ethStakedWithParent[parentId][_user].cBal;
     }
 
     // PARENT POOL - cEth balance preview

@@ -48,7 +48,6 @@ def test_can_withdraw_all():
     assert gwin_protocol.retrieveProtocolCEthBalance.call(pool_5x_id, {"from": account}) == 16_000000000000000000 # cEth in protocol
         
     
-
     pool_type = 0 # classic type pool
     pool_h_rate = 900_0000000000 # 10x leverage
     pool_c_rate = -100_0000000000 # stable
@@ -85,8 +84,12 @@ def test_can_withdraw_all():
     assert valOne == 2_000000000000000000
     assert valTwo == 18_000000000000000000
 
+    # check percent calculated user cbal in parent pool
+    assert rnd(rounded(gwin_protocol.getParentUserCEthBalance(pool_2x_id, account.address, {"from": account}))) == rnd(44_0000000000) # cEth user has in parent pool
+    # check user cbal in parent pool
+    assert rnd(rounded(gwin_protocol.seeUserParentPoolBal.call(pool_2x_id, account.address, {"from": account}))) == rnd(44_0000000000) # cEth user has in parent pool
 
-    ################### tx1 ###################         Withdraw ALL test, no price change
+    ################### tx1 ###################         Withdraw ALL from Parent test, no price change
 
     # Act
     #              WITHDRAWAL              ID, isCooled, isHeated, cAmount, hAmount, isAll, {from}
@@ -109,10 +112,21 @@ def test_can_withdraw_all():
     assert gwin_protocol.retrieveProtocolHEthBalance.call(pool_2x_id, {"from": account}) == 10_000000000000000000 # hEth in protocol
 
     # Owner 
+    # 2x Pool
     assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(pool_2x_id, account.address, {"from": account}))) == rnd(0) # cEth for account 
     assert rnd(roundedDec(gwin_protocol.retrieveCEthPercentBalance.call(pool_2x_id, account.address, {"from": account}))) == rnd(roundedDec(0)) # cEth % for account
-    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(pool_2x_id, account.address, {"from": account}))) == rnd(16_0000000000) # hEth for account
+    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(pool_2x_id, account.address, {"from": account}))) == rnd(10_0000000000) # hEth for account
     assert rnd(roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(pool_2x_id, account.address, {"from": account}))) == rnd(roundedDec(100_0000000000)) # hEth % for account 
+    # 5x Pool
+    assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(pool_5x_id, account.address, {"from": account}))) == rnd(0) # cEth for account 
+    assert rnd(roundedDec(gwin_protocol.retrieveCEthPercentBalance.call(pool_5x_id, account.address, {"from": account}))) == rnd(roundedDec(0)) # cEth % for account
+    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(pool_5x_id, account.address, {"from": account}))) == rnd(4_0000000000) # hEth for account
+    assert rnd(roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(pool_5x_id, account.address, {"from": account}))) == rnd(roundedDec(100_0000000000)) # hEth % for account 
+    # 10x Pool
+    assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(pool_10x_id, account.address, {"from": account}))) == rnd(0) # cEth for account 
+    assert rnd(roundedDec(gwin_protocol.retrieveCEthPercentBalance.call(pool_10x_id, account.address, {"from": account}))) == rnd(roundedDec(0)) # cEth % for account
+    assert rnd(rounded(gwin_protocol.retrieveHEthBalance.call(pool_10x_id, account.address, {"from": account}))) == rnd(2_0000000000) # hEth for account
+    assert rnd(roundedDec(gwin_protocol.retrieveHEthPercentBalance.call(pool_10x_id, account.address, {"from": account}))) == rnd(roundedDec(100_0000000000)) # hEth % for account 
 
     # Alice
     assert rnd(rounded(gwin_protocol.retrieveCEthBalance.call(pool_2x_id, non_owner.address, {"from": account}))) == rnd(0) # cEth for non_owner
