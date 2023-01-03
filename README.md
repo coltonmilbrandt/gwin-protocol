@@ -26,22 +26,29 @@ Please install or have installed the following:
 -   [python](https://www.python.org/downloads/)
 -   Yarn `npm install --global yarn`
 
-Installation
-Install Brownie, if you haven't already. Here is a simple way to install brownie.
+## Installation
+
+### Install Brownie, if you haven't already. Here is a simple way to install brownie.
 
 ```
 python3 -m pip install --user pipx
 python3 -m pipx ensurepath
+# restart your terminal
+pipx install eth-brownie
 ```
 
-# restart your terminal
-
-pipx install eth-brownie
 Or, if that doesn't work, via pip
 
+```
 pip install eth-brownie
 Download the mix and install dependencies.
+```
 
 ## Cloning the project
 
 Use Git to clone the Gwin repository:
+
+```
+git clone https://github.com/coltonmilbrandt/gwin-protocol.git
+cd gwin-protocol
+```
