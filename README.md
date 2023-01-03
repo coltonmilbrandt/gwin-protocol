@@ -20,6 +20,25 @@ Gwin has a great [front-end](https://github.com/coltonmilbrandt/gwin-app) that c
 
 Want to learn more? Check out the [full documentation.](https://coltonmilbrandt.gitbook.io/gwin/)
 
+## Sections
+
+-   [Gwin Protocol](https://github.com/coltonmilbrandt/gwin-protocol#gwin-protocol)
+    -   [Prerequisites](https://github.com/coltonmilbrandt/gwin-protocol#prerequisites)
+    -   [Installation](https://github.com/coltonmilbrandt/gwin-protocol#installation)
+    -   [Local Development](https://github.com/coltonmilbrandt/gwin-protocol#local-development)
+    -   [Running Scripts and Deployment Locally](https://github.com/coltonmilbrandt/gwin-protocol#running-scripts-and-deployment-locally)
+        -   [Basic Local Deployment](https://github.com/coltonmilbrandt/gwin-protocol#basic-local-deployment)
+        -   [Local Pool Deployment with Front-End and Metamask](https://github.com/coltonmilbrandt/gwin-protocol#local-pool-deployment-with-front-end-and-metamask)
+    -   [Running Scripts and Deployment on Goerli Test Net](https://github.com/coltonmilbrandt/gwin-protocol#running-scripts-and-deployment-on-goerli-test-net)
+        -   [Basic Goerli Test Net Deployment](https://github.com/coltonmilbrandt/gwin-protocol#basic-goerli-test-net-deployment)
+        -   [https://github.com/coltonmilbrandt/gwin-protocol#goerli-test-net-pool-deployment-with-front-end-and-metamask](Goerli Test Net Pool Deployment with Front-End and Metamask)
+    -   [Testing with Ganache](https://github.com/coltonmilbrandt/gwin-protocol#testing-with-ganache)
+        -   [Unit Tests](https://github.com/coltonmilbrandt/gwin-protocol#unit-tests)
+        -   [Integration Tests](https://github.com/coltonmilbrandt/gwin-protocol#integration-tests)
+        -   [Parent Pool Test](https://github.com/coltonmilbrandt/gwin-protocol#parent-pool-test)
+    -   [Contact Me](https://github.com/coltonmilbrandt/gwin-protocol#contact-me)
+    -   [Learn More About Gwin](https://github.com/coltonmilbrandt/gwin-protocol#learn-more-about-gwin)
+
 ## Prerequisites
 
 Please install or have the following installed:
@@ -272,7 +291,7 @@ brownie test tests/integration/gwin_parent_int.py --network ganache
 -   Need some help setting up?
 -   Want to contribute?
 
-###Please email me at coltonmilbrandt@gmail.com!
+### Please email me at coltonmilbrandt@gmail.com!
 
 ## Learn More About Gwin
 
