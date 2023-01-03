@@ -76,19 +76,19 @@ All the scripts are designed to work locally or on a testnet.
 
 This will deploy the Gwin smart contract to your local chain with ganache.
 
-Compile the contract
+1. Compile the contract
 
 ```
 brownie compile
 ```
 
-Start ganache and take note of private keys as needed
+2. Start ganache and take note of private keys as needed
 
 ```
 ganache
 ```
 
-Run deploy script with ganache network flag
+3. Run deploy script with ganache network flag
 
 ```
 brownie run scripts/deploy.py --network ganache
@@ -96,24 +96,46 @@ brownie run scripts/deploy.py --network ganache
 
 > Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache. You can safely delete the build folder so that the proper contract is referenced.
 
-### Pool Deployment
+### Pool Deployment, Test with Metamask
 
-This will deploy the Gwin smart contract with six pools to your local chain with ganache.
+This will deploy the Gwin smart contract with multiple pools to your local chain with ganache.
 
-Compile the contract
+1. Compile the contract
 
 ```
 brownie compile
 ```
 
-Start ganache and take note of private keys as needed
+2. Start ganache and take note of private keys
 
 ```
 ganache
 ```
 
-Run deploy script with ganache network flag
+3. Run deploy script with ganache network flag and copy contract address from logs
 
 ```
 brownie run scripts/deploy_pools.py --network ganache
 ```
+
+copy the log output contract address for your newly deployed Gwin contract, for example...
+
+```
+gwin deployed to: 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
+```
+
+copy any price feed addresses you'd like to use to create pools, for example...
+
+```
+deploying: eth_usd_price_feed
+# ...
+Deployed mock price feed to 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
+```
+
+4. Clone and launch Front-End [right here](https://github.com/coltonmilbrandt/gwin-app.git)
+
+5. Insert contract address of your local Gwin smart contract on ganache (from step 3) into the code for the front-end as described in the front end docs [here](https://github.com/coltonmilbrandt/gwin-app.git).
+
+6. Copy the private key for Account (1), and use it to 'Import Account' on MetaMask.
+
+7. Launch front-end with `yarn dev` and connect your MetaMask via Localhost 8545.
