@@ -287,6 +287,10 @@ brownie test tests/integration/gwin_parent_int.py --network ganache
 
 > Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache or change networks. You can safely delete the build folder so that the proper contract is referenced.
 
+## Status
+
+This code has not been officially audited and therefore shouldn't be used as is for main net applications.
+
 # Contact Me
 
 -   Have questions?
