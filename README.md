@@ -21,6 +21,15 @@ Gwin has a great [front-end](https://github.com/coltonmilbrandt/gwin-app) that c
 ### Want to learn more?
 
 Check out the [full documentation.](https://coltonmilbrandt.gitbook.io/gwin/)
+Look through [the FAQs](https://coltonmilbrandt.gitbook.io/gwin/faqs)
+
+## Key Features
+
+-   Launch markets quickly with any price feed
+-   Trade efficiently in any market, even low-interest ones
+-   Act as a market maker and earn profits by maintaining balance in the protocol
+-   Avoid systemic risk with a unique approach to settlement and market making
+-   Connect to the platform via a simple front end and MetaMask
 
 ## Sections
 
@@ -289,7 +298,23 @@ brownie test tests/integration/gwin_parent_int.py --network ganache
 
 ## Status
 
-This code has not been officially audited and therefore shouldn't be used as is for main net applications.
+Gwin is currently in alpha and is undergoing active development. While it is functional, there may be some bugs and issues that have not yet been addressed.
+
+The smart contracts for Gwin have not yet been formally audited and should not be used for main net applications at this time.
+
+If you encounter any issues or have any questions about Gwin, please don't hesitate to [contact me](#contact-me).
+
+## Contributing
+
+We welcome contributions to Gwin! Here are a few ways you can help:
+
+-   Report bugs and suggest features by opening an issue on GitHub.
+-   Contribute code by opening a pull request on GitHub.
+-   Help to improve the documentation by submitting updates and corrections.
+
+## License
+
+Gwin is licensed under the [MIT License](LICENSE).
 
 # Contact Me
 
