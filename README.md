@@ -54,7 +54,7 @@ Please install or have the following installed:
 
 ### Install Brownie, if you haven't already. Here is a simple way to install brownie.
 
-```
+```bash
 python3 -m pip install --user pipx
 python3 -m pipx ensurepath
 # restart your terminal
@@ -63,7 +63,7 @@ pipx install eth-brownie
 
 Or, if that doesn't work, try pip
 
-```
+```bash
 pip install eth-brownie
 Download the mix and install dependencies.
 ```
@@ -72,7 +72,7 @@ Download the mix and install dependencies.
 
 Use Git to clone the Gwin repository:
 
-```
+```bash
 git clone https://github.com/coltonmilbrandt/gwin-protocol.git
 cd gwin-protocol
 ```
@@ -81,13 +81,13 @@ cd gwin-protocol
 
 For local testing install [ganache-cli](https://www.npmjs.com/package/ganache-cli)
 
-```
+```bash
 npm install -g ganache-cli
 ```
 
 or
 
-```
+```bash
 yarn add global ganache-cli
 ```
 
@@ -101,13 +101,13 @@ This will deploy the Gwin smart contract to your local chain with ganache.
 
 1. Compile the contract
 
-```
+```bash
 brownie compile
 ```
 
 2. Start ganache and take note of private keys as needed
 
-```
+```bash
 ganache
 ```
 
@@ -115,7 +115,7 @@ ganache
 
 3. Run deploy script with ganache network flag
 
-```
+```bash
 brownie run scripts/deploy.py --network ganache
 ```
 
@@ -127,13 +127,13 @@ This will deploy the Gwin smart contract with multiple pools to your local chain
 
 1. Compile the contract
 
-```
+```bash
 brownie compile
 ```
 
 2. Start ganache and take note of private keys
 
-```
+```bash
 ganache
 ```
 
@@ -141,19 +141,19 @@ ganache
 
 3. Run deploy script with ganache network flag and copy contract address from logs
 
-```
+```bash
 brownie run scripts/deploy_pools.py --network ganache
 ```
 
 Copy the log output contract address for your newly deployed Gwin contract, for example...
 
-```
+```bash
 gwin deployed to: 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
 ```
 
 Copy any price feed addresses you'd like to use to create pools, for example...
 
-```
+```bash
 deploying: eth_usd_price_feed
 # ...
 Deployed mock price feed to 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
@@ -177,7 +177,7 @@ This will deploy the Gwin smart contract to Goerli.
 
 1. Compile the contract
 
-```
+```bash
 brownie compile
 ```
 
@@ -185,7 +185,7 @@ brownie compile
 
 2. Run deploy script with goerli network flag
 
-```
+```bash
 brownie run scripts/deploy.py --network goerli
 ```
 
@@ -199,7 +199,7 @@ This will deploy the Gwin smart contract with multiple pools to the Goerli Test 
 
 2. Compile the contract
 
-```
+```bash
 brownie compile
 ```
 
@@ -209,13 +209,13 @@ brownie compile
 
 > Note: Make sure you have enough test ETH. Change the amount in the deploy_pools.py script if needed, and make sure you have enough left for gas.
 
-```
+```bash
 brownie run scripts/deploy_pools.py --network goerli
 ```
 
 Copy the log output contract address for your newly deployed Gwin contract, for example...
 
-```
+```bash
 gwin deployed to: 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
 ```
 
@@ -265,7 +265,7 @@ This broad integration test includes a robust script that compares the underlyin
 
 Run this test with:
 
-```
+```bash
 brownie test tests/integration/gwin_int.py --network ganache
 ```
 
@@ -281,7 +281,7 @@ Like the previous broad integration test, but this script tests parent pool type
 
 Run this test with:
 
-```
+```bash
 brownie test tests/integration/gwin_parent_int.py --network ganache
 ```
 
