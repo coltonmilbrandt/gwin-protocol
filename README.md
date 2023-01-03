@@ -12,7 +12,7 @@
 
 # Gwin Protocol
 
-### Launch and Trade Markets with Any Price Feed!
+### Launch and Trade Markets with Any Price Feed
 
 Inspired by how the best DeFi projects work at small scale and large, Gwin allows you to launch a working market with just a price feed and then let that market grow organically as interest increases. The platform algorithmically ensures best performance available, even in markets with limited liquidity. This allows you to create and confidently trade in even the most obscure and growing markets, knowing that your trades will be executed at their best potential, without concerns about exit liquidity or costly exposure in a lopsided trade.
 
@@ -72,7 +72,7 @@ All the scripts are designed to work locally or on a testnet.
 
 ## Running Scripts and Deployment Locally
 
-### Basic Deployment
+### Basic Local Deployment
 
 This will deploy the Gwin smart contract to your local chain with ganache.
 
@@ -96,7 +96,7 @@ brownie run scripts/deploy.py --network ganache
 
 > Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache. You can safely delete the build folder so that the proper contract is referenced.
 
-### Pool Deployment, Test Locally with Metamask
+### Local Pool Deployment, with Front-End and Metamask
 
 This will deploy the Gwin smart contract with multiple pools to your local chain with ganache and then allow you to trade. The deploy_pools.py script will change the price feeds up in 1% increments to 10% higher than the original price and then down in 1% increments to 10% lower than the original price, changing multiple times per minute, so that you can experience price movements more quickly.
 
@@ -118,13 +118,13 @@ ganache
 brownie run scripts/deploy_pools.py --network ganache
 ```
 
-copy the log output contract address for your newly deployed Gwin contract, for example...
+Copy the log output contract address for your newly deployed Gwin contract, for example...
 
 ```
 gwin deployed to: 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
 ```
 
-copy any price feed addresses you'd like to use to create pools, for example...
+Copy any price feed addresses you'd like to use to create pools, for example...
 
 ```
 deploying: eth_usd_price_feed
@@ -132,12 +132,46 @@ deploying: eth_usd_price_feed
 Deployed mock price feed to 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
 ```
 
-4. Clone and launch Front-End [right here](https://github.com/coltonmilbrandt/gwin-app.git)
+4. Clone and launch [front-end](https://github.com/coltonmilbrandt/gwin-app.git).
 
-5. Insert contract address of your local Gwin smart contract on ganache (from step 3) into the code for the front-end as described in the front end docs [here](https://github.com/coltonmilbrandt/gwin-app.git).
+5. Insert contract address of your local Gwin smart contract on ganache (from step 3) into the code for the front-end as described in the [front end docs](https://github.com/coltonmilbrandt/gwin-app.git).
 
 6. Copy the private key for Account (1), and use it to 'Import Account' on MetaMask. Accounts (1-3) are generally your best choice as Account (0) initially funds the pools and Account (4) updates the price feeds.
 
 7. Launch front-end with `yarn dev` and connect your MetaMask via Localhost 8545.
 
-8. Now you can Deposit and Withdraw to pools, go long when ETH/USD is around $900 and sell, short, or go stable when ETH/USD is around $1,100. Keep in mind that without market forces at work, it's easy to create interesting scenarios that otherwise wouldn't naturally arise with other traders participating and taking advantage of underweight (high health) pools. Read more about this in [the documentation](https://coltonmilbrandt.gitbook.io/gwin/technical-details/how-pools-are-settled). Also note that you can create pools as well, read about that [right here](https://coltonmilbrandt.gitbook.io/gwin/technical-details/creating-a-new-market).
+8. Now you can Deposit and Withdraw to pools, go long when ETH/USD is around $900 and withdraw, short, or go stable when ETH/USD is around $1,100 ([see how trading works](https://coltonmilbrandt.gitbook.io/gwin/features/trade)). Keep in mind that without market forces at work, it's easy to create interesting scenarios that otherwise wouldn't naturally arise with other traders participating and taking advantage of underweight (high health) pools. Read more about this in [the documentation](https://coltonmilbrandt.gitbook.io/gwin/technical-details/how-pools-are-settled). Also note that you can create pools as well. Read about that [right here](https://coltonmilbrandt.gitbook.io/gwin/technical-details/creating-a-new-market), just make sure that you use price feed addresses from the logs in Step 3.
+
+### Test Net Pool Deployment, with Front-End and Metamask
+
+This will deploy the Gwin smart contract with multiple pools to the Goerli Test Net and then allow you to trade. The deploy_pools.py script will create multiple pools to start you off.
+
+1. Make sure you [grab some test net ETH](https://goerlifaucet.com/) if you need it.
+
+2. Compile the contract
+
+```
+brownie compile
+```
+
+3. Set up your private key (use a test wallet!) and run deploy script with goerli network flag and copy contract address from logs
+
+```
+brownie run scripts/deploy_pools.py --network goerli
+```
+
+Copy the log output contract address for your newly deployed Gwin contract, for example...
+
+```
+gwin deployed to: 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
+```
+
+Price feeds will be determined by the established Goerli addresses, so no need to worry about copying them or anything.
+
+4. Clone and launch [front-end](https://github.com/coltonmilbrandt/gwin-app.git).
+
+5. Insert contract address of the Goerli Gwin smart contract (from step 3) into the code for the front-end as described in the [front end docs](https://github.com/coltonmilbrandt/gwin-app.git).
+
+6. Launch front-end with `yarn dev` and connect your MetaMask wallet with the same keys that you used to deploy the contract (that way you can get your test ETH back, if you want).
+
+7. Now you can Deposit and Withdraw to pools ([see how trading works](https://coltonmilbrandt.gitbook.io/gwin/features/trade)). Keep in mind that without market forces at work, it's easy to create interesting scenarios that otherwise wouldn't naturally arise with other traders participating and taking advantage of underweight (high health) pools. Read more about this in [the documentation](https://coltonmilbrandt.gitbook.io/gwin/technical-details/how-pools-are-settled). Also note that you can create pools as well. Read about that [right here](https://coltonmilbrandt.gitbook.io/gwin/technical-details/creating-a-new-market).
