@@ -76,21 +76,44 @@ All the scripts are designed to work locally or on a testnet.
 
 This will deploy the Gwin smart contract to your local chain with ganache.
 
-compile the contract
+Compile the contract
 
 ```
 brownie compile
 ```
 
-start ganache and take note of private keys as needed
+Start ganache and take note of private keys as needed
 
 ```
 ganache
 ```
 
-run deploy script with ganache network flag
+Run deploy script with ganache network flag
 
 ```
 brownie run scripts/deploy.py --network ganache
+```
 
+> Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache. You can safely delete the build folder so that the proper contract is referenced.
+
+### Pool Deployment
+
+This will deploy the Gwin smart contract with six pools to your local chain with ganache.
+
+Compile the contract
+
+```
+brownie compile
+```
+
+Start ganache and take note of private keys as needed
+
+```
+ganache
+```
+
+Run deploy script with ganache network flag
+
+```
+brownie run scripts/deploy_pools.py --network ganache
 ```
