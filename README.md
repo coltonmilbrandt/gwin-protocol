@@ -52,3 +52,19 @@ Use Git to clone the Gwin repository:
 git clone https://github.com/coltonmilbrandt/gwin-protocol.git
 cd gwin-protocol
 ```
+
+## Local Development
+
+For local testing install [ganache-cli](https://www.npmjs.com/package/ganache-cli)
+
+```
+npm install -g ganache-cli
+```
+
+or
+
+```
+yarn add global ganache-cli
+```
+
+All the scripts are designed to work locally or on a testnet.
