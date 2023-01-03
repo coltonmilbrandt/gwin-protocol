@@ -16,7 +16,7 @@
 
 Inspired by how the best DeFi projects work at small scale and large, Gwin allows you to launch a working market with just a price feed and then let that market grow organically as interest increases. The platform algorithmically ensures best performance available, even in markets with limited liquidity. This allows you to create and confidently trade in even the most obscure and growing markets, knowing that your transactions will be executed at their best potential, without concerns about exit liquidity or costly exposure in a lopsided trade.
 
-Gwin has [a great front-end](https://github.com/coltonmilbrandt/gwin-app) that can be used along with this smart contract.
+Gwin has a great [front-end](https://github.com/coltonmilbrandt/gwin-app) that can be used along with this smart contract.
 
 Want to learn more? Check out the [full documentation.](https://coltonmilbrandt.gitbook.io/gwin/)
 
@@ -146,7 +146,7 @@ Deployed mock price feed to 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
 
 7. Launch front-end with `yarn dev` and connect your MetaMask via Localhost 8545.
 
-8. Now you can Deposit and Withdraw to pools, go long when ETH/USD is around $900 and withdraw, short, or go stable when ETH/USD is around $1,100 ([see how trading works](https://coltonmilbrandt.gitbook.io/gwin/features/trade)). Keep in mind that without market forces at work, it's easy to create interesting scenarios that otherwise wouldn't naturally arise with other traders participating and taking advantage of underweight (high health) pools. Read more about this in [the documentation](https://coltonmilbrandt.gitbook.io/gwin/technical-details/how-pools-are-settled). Also note that you can create pools as well. Read about that [right here](https://coltonmilbrandt.gitbook.io/gwin/technical-details/creating-a-new-market), just make sure that you use price feed addresses from the logs in Step 3.
+8. Now you can Deposit and Withdraw to pools. To take advantage of the predictable price movement for testing, go long when ETH/USD is around $900 and withdraw, short, or go stable when ETH/USD is around $1,100 ([see how trading works](https://coltonmilbrandt.gitbook.io/gwin/features/trade)). Keep in mind that without market forces at work, it's easy to create interesting scenarios that otherwise wouldn't naturally arise with other traders participating and taking advantage of underweight (high health) pools. Read more about this in [the documentation](https://coltonmilbrandt.gitbook.io/gwin/technical-details/how-pools-are-settled). Also note that you can create pools as well. Read about that [right here](https://coltonmilbrandt.gitbook.io/gwin/technical-details/creating-a-new-market), just make sure that you use price feed addresses from the logs in Step 3.
 
 ## Running Scripts and Deployment on Goerli Test Net
 
@@ -198,7 +198,7 @@ Copy the log output contract address for your newly deployed Gwin contract, for 
 gwin deployed to: 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
 ```
 
-Price feeds will be determined by the established Goerli addresses, so no need to worry about copying them or anything.
+Price feeds will be determined by the established Goerli addresses, so no need to worry about copying them. However, you can get the price feeds you need for creating pools on Goerli [here](https://docs.chain.link/data-feeds/price-feeds/addresses#Goerli%20Testnet).
 
 4. Clone and launch [front-end](https://github.com/coltonmilbrandt/gwin-app.git).
 
@@ -214,7 +214,7 @@ Price feeds will be determined by the established Goerli addresses, so no need t
 
 Unit tests include tests for:
 
--   Initializing Pools
+-   Initializing a Pool
 -   Basic Deposit
 -   Basic Withdrawal
 -   Deposit Exploit Guard
@@ -223,7 +223,7 @@ Unit tests include tests for:
 -   Balance Estimate Accuracy
 -   Zero Amount Deposits
 -   Withdrawal Greater than Balance
--   Etc.
+-   And More...
 
 Run these tests with:
 
@@ -268,6 +268,12 @@ brownie test tests/integration/gwin_parent_int.py --network ganache
 
 # Contact Me
 
-If you have any questions, want some help setting it up, want to contribute, etc. please email me at coltonmilbrandt@gmail.com!
+-   Have questions?
+-   Need some help setting up?
+-   Want to contribute?
+
+###Please email me at coltonmilbrandt@gmail.com!
+
+## Learn More About Gwin
 
 Read the [full docs](https://coltonmilbrandt.gitbook.io/gwin/) to learn more.
