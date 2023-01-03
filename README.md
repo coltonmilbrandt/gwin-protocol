@@ -31,7 +31,7 @@ Want to learn more? Check out the [full documentation.](https://coltonmilbrandt.
         -   [Local Pool Deployment with Front-End and Metamask](https://github.com/coltonmilbrandt/gwin-protocol#local-pool-deployment-with-front-end-and-metamask)
     -   [Running Scripts and Deployment on Goerli Test Net](https://github.com/coltonmilbrandt/gwin-protocol#running-scripts-and-deployment-on-goerli-test-net)
         -   [Basic Goerli Test Net Deployment](https://github.com/coltonmilbrandt/gwin-protocol#basic-goerli-test-net-deployment)
-        -   [https://github.com/coltonmilbrandt/gwin-protocol#goerli-test-net-pool-deployment-with-front-end-and-metamask](Goerli Test Net Pool Deployment with Front-End and Metamask)
+        -   [Goerli Test Net Pool Deployment with Front-End and Metamask](https://github.com/coltonmilbrandt/)gwin-protocol#goerli-test-net-pool-deployment-with-front-end-and-metamask]
     -   [Testing with Ganache](https://github.com/coltonmilbrandt/gwin-protocol#testing-with-ganache)
         -   [Unit Tests](https://github.com/coltonmilbrandt/gwin-protocol#unit-tests)
         -   [Integration Tests](https://github.com/coltonmilbrandt/gwin-protocol#integration-tests)
