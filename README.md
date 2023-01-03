@@ -18,7 +18,9 @@ Inspired by how the best DeFi projects work at small scale and large, Gwin allow
 
 Gwin has a great [front-end](https://github.com/coltonmilbrandt/gwin-app) that can be used along with this smart contract.
 
-Want to learn more? Check out the [full documentation.](https://coltonmilbrandt.gitbook.io/gwin/)
+### Want to learn more?
+
+Check out the [full documentation.](https://coltonmilbrandt.gitbook.io/gwin/)
 
 ## Sections
 
@@ -292,6 +294,8 @@ brownie test tests/integration/gwin_parent_int.py --network ganache
 -   Want to contribute?
 
 ### Please email me at coltonmilbrandt@gmail.com!
+
+### See my website at [coltonmilbrandt.com](www.coltonmilbrandt.com)
 
 ## Learn More About Gwin
 
