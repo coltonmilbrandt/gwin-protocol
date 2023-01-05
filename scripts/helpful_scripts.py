@@ -95,11 +95,11 @@ def get_contract(contract_name):
     if network.show_active() in NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         if contract_type == MockV3Aggregator:
             print(f"deploying: " + contract_name)
-            deploy_mocks(contract_decimals[contract_name], contract_initial_value[contract_name])
+            deploy_mocks(contract_name, contract_decimals[contract_name], contract_initial_value[contract_name])
         else:
             if len(contract_type) <= 0:
                 print(f"deploying: " + contract_name)
-                deploy_mocks()
+                deploy_mocks(contract_name)
         contract = contract_type[-1]
     else:
         try:
@@ -131,7 +131,7 @@ def fund_with_link(
     return tx
 
 
-def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_VALUE):
+def deploy_mocks(contract_name, decimals=DECIMALS, initial_value=INITIAL_VALUE):
     """
     Use this script if you want to deploy mocks to a testnet
     """
@@ -144,7 +144,7 @@ def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_VALUE):
     mock_price_feed = MockV3Aggregator.deploy(
         decimals, initial_value, {"from": account}
     )
-    print(f"Deployed mock price feed to {mock_price_feed.address}")
+    print(f"Deployed mock price feed for {contract_name} to {mock_price_feed.address}")
 
     # print("Deploying Mock VRFCoordinator...")
     # mock_vrf_coordinator = VRFCoordinatorV2Mock.deploy(
