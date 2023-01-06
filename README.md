@@ -113,13 +113,7 @@ All the scripts are designed to work locally or on a testnet.
 
 This will deploy the Gwin smart contract to your local chain with ganache.
 
-1. Compile the contract
-
-```bash
-brownie compile
-```
-
-2. Start ganache and take note of private keys as needed
+1. Start ganache and take note of private keys as needed
 
 ```bash
 ganache
@@ -127,7 +121,7 @@ ganache
 
 > Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache. You can safely delete the build folder so that the proper contract is referenced.
 
-3. Run deploy script with ganache network flag
+2. Run deploy script with ganache network flag
 
 ```bash
 brownie run scripts/deploy.py --network ganache
@@ -139,10 +133,24 @@ This will deploy the Gwin smart contract with multiple pools to your local chain
 
 > The deploy_pools.py script will repeatedly change the price feeds up in 1% increments to 10% higher than the original price and then down in 1% increments to 10% lower than the original price, changing multiple times per minute, so that you can experience price movements quickly and predictably. Eventually, the while loop doing this will terminate.
 
-1. Compile the contract
+1. Look over deploy_pools.py and optionally change any of the initially funded pools or the amount to fund them with.
 
-```bash
-brownie compile
+```python
+    # 'amount' determined by environment - i.e. the ETH you wish to distribute between all the pools
+    if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        amount = 100 # Change this (optional)
+```
+
+```python
+# Change pools (optional)
+#@@@@@@@@@@@@| Create 2x ETH/USD pool with stable parent |@@@@@@@@@@@@#
+    parent_id = 1 # parent ID: 1
+    pool_type = 0 # classic type pool
+    pool_h_rate = 100_0000000000 # 2x leverage
+    pool_c_rate = -100_0000000000 # stable
+    tx = gwin_protocol.initializePool(pool_type, parent_id, eth_usd_price_feed.address, "0x4554482f555344", "0x0000000000000000000000000000000000000000", "0x0", pool_c_rate, pool_h_rate, {"from": account, "value": Web3.toWei(amount, "ether")})
+    tx.wait(1)
+    pool_2x_id = 0
 ```
 
 2. Start ganache and take note of private keys
@@ -175,7 +183,7 @@ Deployed mock price feed to 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
 
 4. Clone and launch [front-end](https://github.com/coltonmilbrandt/gwin-app.git).
 
-5. Insert contract address of your local Gwin smart contract on ganache (from step 3) into the code for the front-end as described in the [front end docs](https://github.com/coltonmilbrandt/gwin-app.git).
+5. Insert contract address of your local Gwin smart contract on ganache (from step 3) into the code for the [front-end](https://github.com/coltonmilbrandt/gwin-app.git). You can set this in the `contracts.js` file in the `constants` folder. If you've made changes to the contract, be sure to copy your new ABI over to `Gwin_abi.js` as well.
 
 6. Copy the private key for Account (1), and use it to 'Import Account' on MetaMask. Accounts (1-3) are generally your best choice as Account (0) initially funds the pools and Account (4) updates the price feeds.
 
@@ -189,11 +197,7 @@ Deployed mock price feed to 0xExAmpLe00c0nTr4ct00N0t00R34L00e3052d323a
 
 This will deploy the Gwin smart contract to Goerli.
 
-1. Compile the contract
-
-```bash
-brownie compile
-```
+1. Get your keys set up and make sure your wallet is funded with test ETH.
 
 > Note: You may need to clear the build folder between deployments and testing, particulary when you change networks. You can safely delete the build folder so that the proper contract is referenced.
 
@@ -211,13 +215,29 @@ This will deploy the Gwin smart contract with multiple pools to the Goerli Test 
 
 1. Make sure you [grab some test net ETH](https://goerlifaucet.com/) if you need it.
 
-2. Compile the contract
+2. Look over deploy_pools.py and optionally change any of the initially funded pools or the amount to fund them with.
 
-```bash
-brownie compile
+```python
+    # 'amount' determined by environment - i.e. the ETH you wish to distribute between all the pools
+    if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        amount = 100
+    else:
+        amount = 1.2 # change this (optional)
 ```
 
-3. Set up your private key (use a test wallet!) and run deploy script with goerli network flag and copy contract address from logs.
+```python
+# Change pools (optional)
+#@@@@@@@@@@@@| Create 2x ETH/USD pool with stable parent |@@@@@@@@@@@@#
+    parent_id = 1 # parent ID: 1
+    pool_type = 0 # classic type pool
+    pool_h_rate = 100_0000000000 # 2x leverage
+    pool_c_rate = -100_0000000000 # stable
+    tx = gwin_protocol.initializePool(pool_type, parent_id, eth_usd_price_feed.address, "0x4554482f555344", "0x0000000000000000000000000000000000000000", "0x0", pool_c_rate, pool_h_rate, {"from": account, "value": Web3.toWei(amount, "ether")})
+    tx.wait(1)
+    pool_2x_id = 0
+```
+
+3. Responsibly set up your keys (use a test wallet!) and run deploy script with goerli network flag and copy contract address from logs.
 
 > Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache or change networks. You can safely delete the build folder so that the proper contract is referenced.
 
@@ -237,7 +257,7 @@ Price feeds will be determined by the established Goerli addresses, so no need t
 
 4. Clone and launch [front-end](https://github.com/coltonmilbrandt/gwin-app.git).
 
-5. Insert contract address of the Goerli Gwin smart contract (from step 3) into the code for the front-end as described in the [front end docs](https://github.com/coltonmilbrandt/gwin-app.git).
+5. Insert contract address of your Goerli Gwin smart contract on ganache (from step 3) into the code for the [front-end](https://github.com/coltonmilbrandt/gwin-app.git). You can set this in the `contracts.js` file in the `constants` folder. If you've made changes to the contract, be sure to copy your new ABI over to `Gwin_abi.js` as well.
 
 6. Launch front-end with `yarn dev` and connect your MetaMask wallet with the same keys that you used to deploy the contract (that way you can get your test ETH back, if you want).
 

@@ -12,10 +12,13 @@ def main():
     if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         amount = 100
     else:
-        amount = 0.6
+        amount = 0.1
     
-    account = get_account() # Protocol 
-    non_owner = get_account(index=4)
+    account = get_account() # Protocol
+
+    if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        non_owner = get_account(index=4)
+    
     gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
 
     #@@@@@@@@@@@@| Create 2x ETH/USD pool with stable parent |@@@@@@@@@@@@#
