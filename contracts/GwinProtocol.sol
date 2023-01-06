@@ -217,6 +217,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             i++
         ) {
             uint256 poolIdIndex = parentPoolBal[parentId].childPoolIds[i];
+            if (pool[poolIdIndex].hEthBal == 0) {
+                return 0;
+            }
             int256 cethPerHeth = cethPerHethTarget(poolIdIndex);
             cEthNeeded += (pool[poolIdIndex].hEthBal * uint256(cethPerHeth));
         }
@@ -231,15 +234,17 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
     //@@  ReADJUST CHILD POOLS  @@// -- uses available parent balances to optimally balance child pools
     function reAdjustChildPools(uint256 poolId) private {
-        uint256 parentId = parentPoolId[poolId];
+        uint256 parentId = parentPoolId[poolId]; // set parent ID
         if (parentId != 0) {
+            // if pool has parent
             uint256 cEthForBalance = cEthNeededForPools(poolId); // total cEth needed
-            if (cEthForBalance == 0) {
-                // this happens if there is no hEth in pools, so 'return', no need to rebalance
-                return;
+            uint256 cEthStakedToTargetedRatio; // the ratio of cEth-in-pool/optimal-cEth
+            if (cEthForBalance != 0) {
+                // avoid divide by zero error
+                cEthStakedToTargetedRatio =
+                    (parentPoolBal[parentId].cEthBal * bps) /
+                    cEthForBalance; // percent of actual eth to amount needed for balance (bps)
             }
-            uint256 cEthStakedToTargetedRatio = (parentPoolBal[parentId]
-                .cEthBal * bps) / cEthForBalance; // percent of actual eth to amount needed for balance (bps)
             for (
                 uint256 i = 0;
                 i < parentPoolBal[parentId].childPoolIds.length;
@@ -248,23 +253,36 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 uint256 poolIdIndex = parentPoolBal[parentId].childPoolIds[i];
                 int256 cethPerHeth = cethPerHethTarget(poolIdIndex);
                 if (parentPoolBal[parentId].cEthBal == 0) {
+                    // if parent pool is zero, zero all individual pool balances too
                     pool[poolIdIndex].cEthBal = 0;
                 } else {
-                    if (cEthStakedToTargetedRatio <= bps) {
-                        // underweight cooled allocation to each child pool
-                        pool[poolIdIndex].cEthBal =
-                            (pool[poolIdIndex].hEthBal *
-                                uint256(cethPerHeth) *
-                                cEthStakedToTargetedRatio) /
-                            bps;
+                    if (
+                        parentPoolBal[parentId].cEthBal > 0 &&
+                        pool[poolIdIndex].hEthBal > 0
+                    ) {
+                        // if hEth values exist to balance and parent has cEth balance
+                        if (cEthStakedToTargetedRatio <= bps) {
+                            // underweight/even cooled allocation to each child pool
+                            pool[poolIdIndex].cEthBal =
+                                (pool[poolIdIndex].hEthBal *
+                                    uint256(cethPerHeth) *
+                                    cEthStakedToTargetedRatio) /
+                                bps;
+                        } else {
+                            // overweight cooled allocation to each child pool
+                            uint256 cEthOverEven = parentPoolBal[parentId]
+                                .cEthBal - cEthForBalance;
+                            pool[poolIdIndex].cEthBal =
+                                (pool[poolIdIndex].hEthBal *
+                                    uint256(cethPerHeth)) +
+                                (cEthOverEven /
+                                    parentPoolBal[parentId]
+                                        .childPoolIds
+                                        .length);
+                        }
                     } else {
-                        // overweight cooled allocation to each child pool
-                        uint256 cEthOverEven = parentPoolBal[parentId].cEthBal -
-                            cEthForBalance;
-                        pool[poolIdIndex].cEthBal =
-                            (pool[poolIdIndex].hEthBal * uint256(cethPerHeth)) +
-                            (cEthOverEven /
-                                parentPoolBal[parentId].childPoolIds.length);
+                        // if values didn't exist to balance, leave cEth balances as is
+                        return;
                     }
                 }
             }
@@ -446,6 +464,19 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     parentPoolBal[parentId].cEthBal -= _cAmount;
                     // reAdjustChildPools will rebalance child cEth bals at end of function,
                     // so no need to adjust singular pool balances
+                    // if (_isAll) {
+                    //     // if parent pool and withdrawing all
+                    //     for (
+                    //         uint256 i = 0;
+                    //         i < parentPoolBal[parentId].childPoolIds.length;
+                    //         i++
+                    //     ) {
+                    //         // set each child pool's cEth balance to zero
+                    //         uint256 poolIdIndex = parentPoolBal[parentId]
+                    //             .childPoolIds[i];
+                    //         pool[poolIdIndex].cEthBal = 0;
+                    //     }
+                    // }
                 } else {
                     // deduct from user's pool balance
                     ethStakedBalance[_poolId][msg.sender].cBal -= _cAmount;
