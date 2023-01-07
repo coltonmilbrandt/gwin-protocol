@@ -462,21 +462,6 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     ethStakedWithParent[parentId][msg.sender].cBal -= _cAmount;
                     // deduct from parent balance
                     parentPoolBal[parentId].cEthBal -= _cAmount;
-                    // reAdjustChildPools will rebalance child cEth bals at end of function,
-                    // so no need to adjust singular pool balances
-                    // if (_isAll) {
-                    //     // if parent pool and withdrawing all
-                    //     for (
-                    //         uint256 i = 0;
-                    //         i < parentPoolBal[parentId].childPoolIds.length;
-                    //         i++
-                    //     ) {
-                    //         // set each child pool's cEth balance to zero
-                    //         uint256 poolIdIndex = parentPoolBal[parentId]
-                    //             .childPoolIds[i];
-                    //         pool[poolIdIndex].cEthBal = 0;
-                    //     }
-                    // }
                 } else {
                     // deduct from user's pool balance
                     ethStakedBalance[_poolId][msg.sender].cBal -= _cAmount;
@@ -1070,6 +1055,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         returns (uint256)
     {
         uint256 health;
+        if (pool[_poolId].cEthBal == 0 || pool[_poolId].hEthBal == 0) {
+            return 0;
+        }
         // calculate expected cEth percent of paired pools
         int256 cEthPercent = (abs(pool[_poolId].hRate) * int256(bps)) /
             (abs(pool[_poolId].hRate) + abs(pool[_poolId].cRate));
@@ -1350,6 +1338,14 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         returns (uint256, uint256)
     {
         int256 assetUsdProfit = getProfit(_poolId, _simAssetUsd); // returns ETH/USD profit in terms of basis points
+        if (assetUsdProfit == 0) {
+            // if price hasn't changed, balances have not changed
+            return (pool[_poolId].hEthBal, pool[_poolId].cEthBal);
+        }
+        if (bothPoolsHaveBalance(_poolId) == false) {
+            // skip if there is not opposing balances to settle
+            return (pool[_poolId].hEthBal, pool[_poolId].cEthBal);
+        }
 
         // find expected return and use it to calculate allocation difference for each tranche
         (
