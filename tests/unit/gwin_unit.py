@@ -53,17 +53,18 @@ def test_initialize_protocol():
     eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account}) 
     assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1000_00000000 
 
-def test_only_owner_can_initialize():
-    # Arrange
-    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        pytest.skip("Only for local testing!")
-    account = get_account()
-    non_owner = get_account(index=1)
-    gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
-    # Act/Assert
-    with pytest.raises(ValueError):
-        parent_id = 0
-        gwin_protocol.initializePool(0, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": non_owner, "value": Web3.toWei(20, "ether")})
+# def test_only_owner_can_initialize():
+    # CHANGED - anyone can initialize a pool now
+    # # Arrange
+    # if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+    #     pytest.skip("Only for local testing!")
+    # account = get_account()
+    # non_owner = get_account(index=1)
+    # gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+    # # Act/Assert
+    # with pytest.raises(ValueError):
+    #     parent_id = 0
+    #     gwin_protocol.initializePool(0, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": non_owner, "value": Web3.toWei(20, "ether")})
 
 def test_deploy_mock_protocol_in_use():
     # Arrange

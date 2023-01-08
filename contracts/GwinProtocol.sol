@@ -134,7 +134,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         bytes32 _quoteCurrencyKey,
         int256 _cRate,
         int256 _hRate
-    ) external payable onlyOwner returns (uint256) {
+    ) external payable returns (uint256) {
         poolIds.push(newPoolId);
         pool[newPoolId].id = newPoolId;
         pool[newPoolId].poolType = _type;
@@ -1055,15 +1055,19 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         returns (uint256)
     {
         uint256 health;
-        if (pool[_poolId].cEthBal == 0 || pool[_poolId].hEthBal == 0) {
+        // get the hEthBal and cEthBal previews for the pool
+        (uint256 hEthBalPreview, uint256 cEthBalPreview) = previewPoolBalances(
+            _poolId
+        );
+        if (cEthBalPreview == 0 || hEthBalPreview == 0) {
             return 0;
         }
         // calculate expected cEth percent of paired pools
         int256 cEthPercent = (abs(pool[_poolId].hRate) * int256(bps)) /
             (abs(pool[_poolId].hRate) + abs(pool[_poolId].cRate));
         // calculate actual cEth percent of paired pools
-        uint256 cooledRatio = ((pool[_poolId].cEthBal * bps) /
-            (pool[_poolId].cEthBal + pool[_poolId].hEthBal));
+        uint256 cooledRatio = ((cEthBalPreview * bps) /
+            (cEthBalPreview + hEthBalPreview));
         if (_isCooled == true) {
             //            expected         actual
             health = (uint256(cEthPercent) * 100) / cooledRatio;
