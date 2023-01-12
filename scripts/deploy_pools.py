@@ -12,7 +12,7 @@ def main():
     if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         amount = 100
     else:
-        amount = 0.1
+        amount = 0.2
     
     account = get_account() # Protocol
 
