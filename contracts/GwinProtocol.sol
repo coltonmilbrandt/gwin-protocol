@@ -980,7 +980,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             ); // reallocate the protocol ETH according to price movement
     }
 
-    //@@  GET RANGE OF RETURNS  @@// - shows the estimated price movement of a position
+    /// @notice Shows the estimated price movement of a position
+    /// @param _poolId The pool ID
+    /// @param _address The address to get the user balance estimates of
+    /// @param _isCooled Boolean value if getting cooled value
+    /// @param _isAll Boolean value of whether getting the entire value
+    /// @return int256[] range of estimated returns at intervals
     function getRangeOfReturns(
         uint256 _poolId,
         address _address,
