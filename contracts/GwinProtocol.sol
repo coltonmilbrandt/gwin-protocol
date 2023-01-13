@@ -984,7 +984,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     /// @param _poolId The pool ID
     /// @param _address The address to get the user balance estimates of
     /// @param _isCooled Boolean value if getting cooled value
-    /// @param _isAll Boolean value of whether getting the entire value
+    /// @param _isAll Boolean value of whether getting entire balance, rather than user balance
     /// @return int256[] range of estimated returns at intervals
     function getRangeOfReturns(
         uint256 _poolId,
