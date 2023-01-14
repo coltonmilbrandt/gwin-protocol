@@ -985,7 +985,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     /// @param _address The address to get the user balance estimates of
     /// @param _isCooled Boolean value if getting cooled value
     /// @param _isAll Boolean value of whether getting entire balance, rather than user balance
-    /// @return int256[] range of estimated returns at intervals
+    /// @return int256[] range of estimated returns at intervals from -50% price to +50% price
     function getRangeOfReturns(
         uint256 _poolId,
         address _address,
@@ -1033,6 +1033,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
     // Internal functions
 
+    /// @notice Scales the price to desired decimals
+    /// @param _price The price returned by the price feed
+    /// @param _priceDecimals The decimals for the price retrieved
+    /// @param _decimals The decimal form desired
+    /// @return int256 Returns the adjusted price feed
     function scalePrice(
         int256 _price,
         uint8 _priceDecimals,
@@ -1048,7 +1053,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
 
     // Private functions
 
-    //@@  INTERACT  @@// - rebalances the cooled and heated tranches/pools
+    /// @notice rebalances the cooled and heated tranches/pools based on price movement
+    /// @param _poolId The poolID of the targeted pool
     function interact(uint256 _poolId) private {
         // get current price to determine profit
         uint256 currentAssetUsd = retrieveCurrentPrice(_poolId);
@@ -1133,7 +1139,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         reallocate(_poolId, currentAssetUsd, cooledChange, cooledAllocation);
     }
 
-    //@@  REALLOCATE  @@// - uses the USD values to calculate ETH balances of tranches
+    /// @notice Uses the USD values to calculate ETH balances of tranches
+    /// @param _poolId The targeted poool
+    /// @param _currentAssetUsd The current assets price from price feed
+    /// @param _cooledChange The natural change of the value of the cooled pool
+    /// @param _cooledAllocation The allocation to the cooled pool
     function reallocate(
         uint256 _poolId,
         uint256 _currentAssetUsd, // in usdDecimal form
@@ -1156,8 +1166,10 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         pool[_poolId].lastSettledUsdPrice = pool[_poolId].currentUsdPrice;
     }
 
-    //@@  REMOVE-FROM-ARRAY  @@// - removes the staker from the array of ETH stakers
-    // can be expanded on to further optimize by removing redundancy
+    /// @notice Removes the staker from the array of ETH stakers
+    /// @param _poolId The targeted poool
+    /// @param index The index to remove
+    /// @dev can be expanded on to further optimize efficiency by removing redundancy
     function removeFromArray(uint256 _poolId, uint256 index) private {
         ethStakers[_poolId][index] = ethStakers[_poolId][
             ethStakers[_poolId].length - 1
@@ -1165,7 +1177,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ethStakers[_poolId].pop();
     }
 
-    //@@  TRANCHE/POOL SPECIFIC CALCS  @@// - calculates allocation difference for a tranche/pool
+    /// @notice calculates allocation difference for a tranche/pool
+    /// @param _poolId The targeted poool
+    /// @param _isCooled Boolean value representing whether pool is cooled or not
+    /// @param _assetUsdProfit The profit based on the price feed
+    /// @param _currentAssetUsd The current price feed value
     function trancheSpecificCalcs(
         uint256 _poolId,
         bool _isCooled,
@@ -1223,6 +1239,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (allocationDifference, trancheChange, nonNaturalRatio);
     }
 
+    /// @notice checks whether both pools in pool pair have a balance
+    /// @param _poolId The targeted poool
+    /// @return bool Boolean representing whether both pools have a balance
     function bothPoolsHaveBalance(uint256 _poolId) public view returns (bool) {
         if (pool[_poolId].cEthBal == 0 || pool[_poolId].hEthBal == 0) {
             return false;
@@ -1231,7 +1250,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
     }
 
-    //@@  CeTH NEEDED  @@// -- determines the amount of cEth to optimally balance child pools
+    /// @notice determines the amount of cEth to optimally balance child pools
+    /// @param poolId The targeted poool
+    /// @return uint256 The amount of cEth needed optimally to balance all child pools
     function cEthNeededForPools(uint256 poolId) private view returns (uint256) {
         uint256 parentId = parentPoolId[poolId];
         uint256 cEthNeeded;
@@ -1250,13 +1271,16 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return cEthNeeded;
     }
 
-    //@@  CeTH to HeTH ratio  @@// -- determines optimal ratio of cEth per hEth for a child pool
+    /// @notice determines optimal ratio of cEth per hEth for a child pool
+    /// @param poolId The targeted poool
+    /// @return int256 The optimal ratio of cEth per hEth in a child pool
     function cethPerHethTarget(uint256 poolId) private view returns (int256) {
         int256 cethPerHeth = abs(pool[poolId].hRate) / abs(pool[poolId].cRate);
         return cethPerHeth;
     }
 
-    //@@  ReADJUST CHILD POOLS  @@// -- uses available parent balances to optimally balance child pools
+    /// @notice uses available parent balances to optimally balance child pools
+    /// @param poolId The targeted poool
     function reAdjustChildPools(uint256 poolId) private {
         uint256 parentId = parentPoolId[poolId]; // set parent ID
         if (parentId != 0) {
@@ -1313,10 +1337,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
     }
 
-    //@@  ADD AGGREGATOR  @@// -- adds chainlink price feed aggregator
+    /// @notice adds chainlink price feed aggregator
+    /// @param currencyKey The pair description (i.e. "ETH/USD") as a Base32 value
+    /// @param aggregatorAddress The address of the price feed contract
     function addAggregator(bytes32 currencyKey, address aggregatorAddress)
         private
-        onlyOwner
     {
         AggregatorV3Interface aggregator = AggregatorV3Interface(
             aggregatorAddress
