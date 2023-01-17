@@ -112,7 +112,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     /// @notice Initialize a pool pair or initialize a pool connected to a parent
-    /// @dev This function auto balances the pools, but in the future, allowing flexibility makes more sense
+    /// @dev This function auto balances the pool balances, but in the future, allowing flexibility makes more sense
     /// @param _type The type of pool, 0 for classic, 1 for modified
     /// @param _parentId The ID of the parent pool you are connecting with, or 0 for none
     /// @param _basePriceFeedAddress The contract address of the base price feed
@@ -1355,7 +1355,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         currencyKeyDecimals[currencyKey] = feedDecimals;
     }
 
-    //@@ INTERACT BY POOL  @@// -- interacts to settle pool or all child pools
+    /// @notice Calls interact to settle pool or all child pools if pool has a parent
+    /// @param poolId The selected pool ID
     function interactByPool(uint256 poolId) private {
         uint256 parentId = parentPoolId[poolId];
         if (parentId == 0) {
@@ -1383,7 +1384,11 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
     }
 
-    //@@  RE-ADJUST  @@// - adjusts only affected user pool percentages and balances
+    /// @notice Adjusts only the affected user pool percentages and balances
+    /// @param _poolId The pool ID of the selected pool
+    /// @param _beforeTx Boolean representing whether the function is running before interact is called
+    /// @param _isCooled Boolean representing whether the pool is cooled
+    /// @param _isHeated Boolean representing whether the pool is heated
     function reAdjust(
         uint256 _poolId,
         bool _beforeTx,
@@ -1523,7 +1528,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
     }
 
-    //@@ LIQUIDATE-IF-ZERO  @@// - liquidates every user in a zero balance tranche
+    /// @notice Liquidates every user in a zero balance tranche
+    /// @param _poolId The pool ID of the selected pool
     function liquidateIfZero(uint256 _poolId) private {
         // when user balance falls to zero, user percent needs to be set to zero
         for (
@@ -1550,7 +1556,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         }
     }
 
-    //@@  SIMULATE REALLOCATE  @@// - uses the USD values to calculate ETH balances of tranches
+    /// @notice Uses the USD values to simulate ETH balances of tranches
+    /// @param _poolId The targeted pool
+    /// @param _simAssetUsd The current assets price from price feed
+    /// @param _cooledChange The natural change of the value of the cooled pool
+    /// @param _cooledAllocationDiff The allocation to the cooled pool
+    /// @param _absAllocationTotal The absolute value of the allocation total
     function simulateReallocate(
         uint256 _poolId,
         uint256 _simAssetUsd, // in usdDecimal form
@@ -1600,7 +1611,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         return (hEthSimBal, cEthSimBal);
     }
 
-    //@@  ABSOLUTE-VALUE  @@// - returns the absolute value of an int
+    /// @notice Returns the absolute value of an int
+    /// @return int256 The absolute value of the input
     function abs(int256 x) private pure returns (int256) {
         return x >= 0 ? x : -x;
     }
