@@ -1240,7 +1240,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     /// @notice checks whether both pools in pool pair have a balance
-    /// @param _poolId The targeted poool
+    /// @param _poolId The targeted pool
     /// @return bool Boolean representing whether both pools have a balance
     function bothPoolsHaveBalance(uint256 _poolId) public view returns (bool) {
         if (pool[_poolId].cEthBal == 0 || pool[_poolId].hEthBal == 0) {
@@ -1251,7 +1251,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     /// @notice determines the amount of cEth to optimally balance child pools
-    /// @param poolId The targeted poool
+    /// @param poolId The targeted pool
     /// @return uint256 The amount of cEth needed optimally to balance all child pools
     function cEthNeededForPools(uint256 poolId) private view returns (uint256) {
         uint256 parentId = parentPoolId[poolId];
@@ -1272,7 +1272,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     /// @notice determines optimal ratio of cEth per hEth for a child pool
-    /// @param poolId The targeted poool
+    /// @param poolId The targeted pool
     /// @return int256 The optimal ratio of cEth per hEth in a child pool
     function cethPerHethTarget(uint256 poolId) private view returns (int256) {
         int256 cethPerHeth = abs(pool[poolId].hRate) / abs(pool[poolId].cRate);
@@ -1280,7 +1280,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     }
 
     /// @notice uses available parent balances to optimally balance child pools
-    /// @param poolId The targeted poool
+    /// @param poolId The targeted pool
     function reAdjustChildPools(uint256 poolId) private {
         uint256 parentId = parentPoolId[poolId]; // set parent ID
         if (parentId != 0) {
