@@ -1253,7 +1253,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     /// @notice determines the amount of cEth to optimally balance child pools
     /// @param poolId The targeted pool
     /// @return uint256 The amount of cEth needed optimally to balance all child pools
-    function cEthNeededForPools(uint256 poolId) private view returns (uint256) {
+    function cEthNeededForPools(uint256 poolId) public view returns (uint256) {
         uint256 parentId = parentPoolId[poolId];
         uint256 cEthNeeded;
         for (
@@ -1263,10 +1263,12 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         ) {
             uint256 poolIdIndex = parentPoolBal[parentId].childPoolIds[i];
             if (pool[poolIdIndex].hEthBal == 0) {
-                return 0;
+                cEthNeeded += 0;
+            } else {
+                int256 cethPerHeth = cethPerHethTarget(poolIdIndex);
+                cEthNeeded += (pool[poolIdIndex].hEthBal *
+                    uint256(cethPerHeth));
             }
-            int256 cethPerHeth = cethPerHethTarget(poolIdIndex);
-            cEthNeeded += (pool[poolIdIndex].hEthBal * uint256(cethPerHeth));
         }
         return cEthNeeded;
     }
@@ -1274,7 +1276,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     /// @notice determines optimal ratio of cEth per hEth for a child pool
     /// @param poolId The targeted pool
     /// @return int256 The optimal ratio of cEth per hEth in a child pool
-    function cethPerHethTarget(uint256 poolId) private view returns (int256) {
+    function cethPerHethTarget(uint256 poolId) public view returns (int256) {
         int256 cethPerHeth = abs(pool[poolId].hRate) / abs(pool[poolId].cRate);
         return cethPerHeth;
     }
@@ -1283,7 +1285,9 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
     /// @param poolId The targeted pool
     function reAdjustChildPools(uint256 poolId) private {
         uint256 parentId = parentPoolId[poolId]; // set parent ID
+        // parent ID is 1
         if (parentId != 0) {
+            // parent ID != 1
             // if pool has parent
             uint256 cEthForBalance = cEthNeededForPools(poolId); // total cEth needed
             uint256 cEthStakedToTargetedRatio; // the ratio of cEth-in-pool/optimal-cEth
@@ -1299,11 +1303,13 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 i++
             ) {
                 uint256 poolIdIndex = parentPoolBal[parentId].childPoolIds[i];
+                // get the ratio of cEth to each hEth
                 int256 cethPerHeth = cethPerHethTarget(poolIdIndex);
                 if (parentPoolBal[parentId].cEthBal == 0) {
-                    // if parent pool is zero, zero all individual pool balances too
+                    // if parent pool cEth is zero, zero all individual pool balances too
                     pool[poolIdIndex].cEthBal = 0;
                 } else {
+                    // if parent pool cEth is positive
                     if (
                         parentPoolBal[parentId].cEthBal > 0 &&
                         pool[poolIdIndex].hEthBal > 0
