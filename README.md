@@ -14,7 +14,7 @@
 
 ### Launch and Trade Markets with Any Price Feed
 
-Inspired by how the best DeFi projects work at small scale and large, Gwin allows you to launch a working market with just a price feed and then let that market grow organically as interest increases. The platform algorithmically ensures best performance available, even in markets with limited liquidity. This allows you to create and confidently trade in even the most obscure and growing markets, knowing that your transactions will be executed at their best potential, without concerns about exit liquidity or costly exposure in a lopsided trade.
+Launch an endless variety of markets with just a price feed and an ETH deposit. Markets grow organically as interest grows, and the platform algorithmically ensures best performance available, even in markets with limited liquidity. This allows you to create and confidently trade longs, shorts, and stables in even the most obscure and growing markets, knowing that your transactions will be executed at their best potential. Gwin is designed so that you don't need to worry about exit liquidity or costly exposure in a lopsided trade. So get in, get out, and gwin!
 
 Gwin has a great [front-end](https://github.com/coltonmilbrandt/gwin-app) that can be used along with this smart contract.
 
