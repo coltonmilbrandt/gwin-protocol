@@ -343,7 +343,8 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
             pool[_poolId].hEthBal -= _hAmount;
             payable(msg.sender).transfer(_cAmount + _hAmount);
         } else {
-            if (_cAmount > 0 && _hAmount == 0) {
+            // Either Cooled or Heated
+            if (_cAmount > 0) {
                 // Cooled, No Heated
                 if (parentPoolId[_poolId] != 0) {
                     // deduct from user's parent balance
@@ -357,7 +358,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                     pool[_poolId].cEthBal -= _cAmount;
                 }
                 payable(msg.sender).transfer(_cAmount);
-            } else if (_cAmount == 0 && _hAmount > 0) {
+            } else if (_hAmount > 0) {
                 // Heated, No Cooled
                 ethStakedBalance[_poolId][msg.sender].hBal -= _hAmount;
                 if (parentPoolId[_poolId] != 0) {

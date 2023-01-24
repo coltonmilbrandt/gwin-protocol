@@ -1,7 +1,7 @@
 from re import T
 from brownie import GwinProtocol, GwinToken, network, exceptions
 from pyparsing import null_debug_action
-from scripts.helpful_scripts import LOCAL_BLOCKCHAIN_ENVIRONMENTS, INITIAL_VALUE, DECIMALS, get_account, get_contract, rounded, roundedDec, extra_rounded, rnd
+from scripts.helpful_scripts import LOCAL_BLOCKCHAIN_ENVIRONMENTS, INITIAL_VALUE, DECIMALS, get_account, get_contract, rounded, roundedDec, extra_rounded, rnd, empty_account
 from scripts.deploy import deploy_gwin_protocol_and_gwin_token
 from web3 import Web3
 import pytest
@@ -516,3 +516,13 @@ def test_use_protocol():
     assert rnd(rounded(gwin_protocol.getParentUserCEthBalance(pool_2x_id, non_owner_two.address, {"from": account}))) == rnd(0) # cEth user has in parent pool
     assert rnd(rounded(gwin_protocol.getParentUserCEthBalance(pool_2x_id, non_owner_three.address, {"from": account}))) == rnd(0) # cEth user has in parent pool
     assert rnd(rounded(gwin_protocol.getParentUserCEthBalance(pool_2x_id, non_owner_four.address, {"from": account}))) == rnd(0) # cEth user has in parent pool
+
+    # Clean Up
+    empty_account(gwin_protocol, account)
+    empty_account(gwin_protocol, non_owner)
+    empty_account(gwin_protocol, non_owner_two)
+    empty_account(gwin_protocol, non_owner_three)
+    empty_account(gwin_protocol, non_owner_four)
+
+    # Ensure dust is less that $0.01
+    assert rounded(gwin_protocol.retrieveEthInContract({"from": account})) < 9000000000000 # total in protocol

@@ -285,3 +285,12 @@ def roundedDec(val):
 def round_up(n, decimals=0):
     multiplier = 10 ** decimals
     return math.ceil(n * multiplier) / multiplier
+
+def empty_account(gwin_protocol, account):
+    # Act - Withdraw all funds from heated to test cooled branch
+    #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
+    tx = gwin_protocol.withdrawFromTranche(0, False, True, 0, 0, True, {"from": account})
+    tx.wait(1)
+    #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
+    tx = gwin_protocol.withdrawFromTranche(0, True, False, 0, 0, True, {"from": account})
+    tx.wait(1)
