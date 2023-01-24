@@ -51,7 +51,14 @@ def test_initialize_protocol():
     assert gwin_protocol.retrieveCEthBalance.call(0, account.address, {"from": account}) == 10000000000000000000 # cEth for account
     assert gwin_protocol.retrieveHEthBalance.call(0, account.address, {"from": account}) == 10000000000000000000 # hEth for account
     eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account}) 
-    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1000_00000000 
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1000_00000000
+
+    # Clean Up
+    empty_account(gwin_protocol, account)
+    empty_account(gwin_protocol, non_owner)
+
+    # Ensure dust is less that $0.01
+    assert rounded(gwin_protocol.retrieveEthInContract({"from": account})) < 9000000000000 # total in protocol
 
 def test_initialize_protocol_with_positive_rates():
     # Arrange
@@ -99,6 +106,13 @@ def test_non_owner_can_initialize():
     eth_usd_price_feed.updateAnswer(1000_00000000, {"from": account}) 
     assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1000_00000000
 
+    # Clean Up
+    empty_account(gwin_protocol, account)
+    empty_account(gwin_protocol, non_owner)
+
+    # Ensure dust is less that $0.01
+    assert rounded(gwin_protocol.retrieveEthInContract({"from": account})) < 9000000000000 # total in protocol
+
 # def test_only_owner_can_initialize():
     # CHANGED - anyone can initialize a pool now
     # # Arrange
@@ -143,6 +157,15 @@ def test_deploy_mock_protocol_in_use():
     assert gwin_protocol.retrieveCEthPercentBalance.call(0, non_owner_two.address, {"from": account}) == 0 # cEth % for non_owner_two
     assert rounded(gwin_protocol.retrieveHEthBalance.call(0, non_owner_two.address, {"from": account})) == 9656799970 # hEth for non_owner_two
     assert gwin_protocol.retrieveHEthPercentBalance.call(0, non_owner_two.address, {"from": account}) == 7_9474972592 # hEth % for non_owner_two 
+
+    # Clean Up
+    empty_account(gwin_protocol, account)
+    empty_account(gwin_protocol, non_owner)
+    empty_account(gwin_protocol, non_owner_two)
+    empty_account(gwin_protocol, non_owner_three)
+    empty_account(gwin_protocol, non_owner_four)
+
+    assert rounded(gwin_protocol.retrieveEthInContract({"from": account})) == 0 # total in protocol
 
 def test_estimate_balances():
     # Arrange
@@ -1164,6 +1187,72 @@ def test_deposit_with_neither_cooled_nor_heated():
 
     assert rounded(gwin_protocol.retrieveEthInContract({"from": account})) == 0 # total in protocol
 
+def test_deposit_and_test_get_all_pools():
+    # Check get all pools to make sure it returns expected values
+    # Arrange
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    account = get_account()
+    non_owner = get_account(index=1) # Alice
+    non_owner_two = get_account(index=2) # Bob
+    non_owner_three = get_account(index=3) # Chris
+    non_owner_four = get_account(index=4) # Dan
+    gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+    # Act
+    parent_id = 0
+    pool_id = 0
+    gwin_protocol.initializePool(0, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+    # Assert
+    assert gwin_protocol.retrieveProtocolCEthBalance.call(pool_id, {"from": account}) == 10000000000000000000 # cEth in protocol
+    assert gwin_protocol.retrieveProtocolHEthBalance.call(pool_id, {"from": account}) == 10000000000000000000 # hEth in protocol
+    assert gwin_protocol.retrieveCEthPercentBalance.call(pool_id, account.address, {"from": account}) == 1000000000000 # cEth % for account
+    assert gwin_protocol.retrieveHEthPercentBalance.call(pool_id, account.address, {"from": account}) == 1000000000000 # hEth % for account
+    assert gwin_protocol.retrieveCEthBalance.call(pool_id, account.address, {"from": account}) == 10000000000000000000 # cEth for account
+    assert gwin_protocol.retrieveHEthBalance.call(pool_id, account.address, {"from": account}) == 10000000000000000000 # hEth for account
+    assert gwin_protocol.retrieveCurrentPrice(pool_id, {"from": account}) == 1000_00000000 
+
+    # Act - deposit to heated
+    #              DEPOSIT                     isCooled, isHeated, cAmount, hAmount {from, msg.value}
+    tx = gwin_protocol.depositToTranche(pool_id, False, True, 0, Web3.toWei(1, "ether"), {"from": account, "value": Web3.toWei(1, "ether")})
+    tx.wait(1)
+
+    # Assert
+    assert gwin_protocol.retrieveProtocolCEthBalance.call(pool_id, {"from": account}) == 10000000000000000000 # cEth in protocol
+    assert gwin_protocol.retrieveProtocolHEthBalance.call(pool_id, {"from": account}) == 11000000000000000000 # hEth in protocol
+    assert gwin_protocol.retrieveCEthPercentBalance.call(pool_id, account.address, {"from": account}) == 1000000000000 # cEth % for account
+    assert gwin_protocol.retrieveHEthPercentBalance.call(pool_id, account.address, {"from": account}) == 1000000000000 # hEth % for account
+    assert gwin_protocol.retrieveCEthBalance.call(pool_id, account.address, {"from": account}) == 10000000000000000000 # cEth for account
+    assert gwin_protocol.retrieveHEthBalance.call(pool_id, account.address, {"from": account}) == 11000000000000000000 # hEth for account
+
+    pool_array = gwin_protocol.getAllPoolsWithBalances.call(account.address, {"from": account})
+    pool = pool_array[0]
+    assert pool[0] == pool_id
+    assert pool[1] == parent_id
+    assert pool[2] == 1000_00000000
+    assert pool[3] == 1000_00000000
+    assert pool[4] == "0x455448"
+    assert pool[5] == "0x0"
+    assert pool[6] == 11000000000000000000 # hEth in protocol
+    assert pool[7] == 10000000000000000000 # cEth in protocol
+    assert pool[8] == 50_0000000000
+    assert pool[9] == -50_0000000000
+    assert pool[10] == 95
+    assert pool[11] == 105
+    assert pool[12] == 0
+    assert pool[13] == 10000000000000000000 # cEth in protocol
+    assert pool[14] == 11000000000000000000 # hEth in protocol
+    assert pool[15] == 10000000000000000000 # cEth for account
+    assert pool[16] == 11000000000000000000 # hEth for account
+    
+    # Clean Up
+    empty_account(gwin_protocol, account)
+    empty_account(gwin_protocol, non_owner)
+    empty_account(gwin_protocol, non_owner_two)
+    empty_account(gwin_protocol, non_owner_three)
+    empty_account(gwin_protocol, non_owner_four)
+
+    assert rounded(gwin_protocol.retrieveEthInContract({"from": account})) == 0 # total in protocol
+
 def test_can_withdraw_all_after_all_heated():
     # Arrange
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
@@ -1472,6 +1561,16 @@ def test_can_withdraw_all_after_all_heated():
     assert rnd(rounded(gwin_protocol.getParentUserCEthBalance(pool_2x_id, non_owner_three.address, {"from": account}))) == rnd(0) # cEth user has in parent pool
     assert rnd(rounded(gwin_protocol.getParentUserCEthBalance(pool_2x_id, non_owner_four.address, {"from": account}))) == rnd(0) # cEth user has in parent pool
 
+    # Clean Up
+    empty_account(gwin_protocol, account)
+    empty_account(gwin_protocol, non_owner)
+    empty_account(gwin_protocol, non_owner_two)
+    empty_account(gwin_protocol, non_owner_three)
+    empty_account(gwin_protocol, non_owner_four)
+
+    # Ensure dust is less that $0.01
+    assert rounded(gwin_protocol.retrieveEthInContract({"from": account})) < 9000000000000 # total in protocol
+
 def test_both_pools_have_balances_is_false():
     # Heated is zero and Cooled is zero
     # Arrange
@@ -1531,6 +1630,53 @@ def test_both_pools_have_balances():
     tx.wait(1)
     tx = gwin_protocol.withdrawFromTranche(0, False, True, 0, 0, True, {"from": account})
     tx.wait(1)
+
+def test_both_pools_have_balances_after_price_change():
+    # Arrange
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    account = get_account()
+    non_owner = get_account(index=1)
+    gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+    # Act
+    parent_id = 0
+    gwin_protocol.initializePool(0, parent_id, eth_usd_price_feed.address, "0x455448", "0x0000000000000000000000000000000000000000", "0x0", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+    # Assert
+    assert gwin_protocol.retrieveProtocolCEthBalance.call(0, {"from": account}) == 10000000000000000000 # cEth in protocol
+    assert gwin_protocol.retrieveProtocolHEthBalance.call(0, {"from": account}) == 10000000000000000000 # hEth in protocol
+    assert gwin_protocol.retrieveCEthPercentBalance.call(0, account.address, {"from": account}) == 1000000000000 # cEth % for account
+    assert gwin_protocol.retrieveHEthPercentBalance.call(0, account.address, {"from": account}) == 1000000000000 # hEth % for account
+    assert gwin_protocol.retrieveCEthBalance.call(0, account.address, {"from": account}) == 10000000000000000000 # cEth for account
+    assert gwin_protocol.retrieveHEthBalance.call(0, account.address, {"from": account}) == 10000000000000000000 # hEth for account
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 1000_00000000
+
+    # Arrange - empty the pools entirely
+    #              WITHDRAWAL              isCooled, isHeated, cAmount, hAmount {from, msg.value}
+    tx = gwin_protocol.withdrawFromTranche(0, True, False, 0, 0, True, {"from": account})
+    tx.wait(1)
+    tx = gwin_protocol.withdrawFromTranche(0, False, True, 0, 0, True, {"from": account})
+    tx.wait(1)
+    
+    eth_usd_price_feed.updateAnswer(900_00000000, {"from": account}) # Change answer so it passes first require in interact()
+
+    #              DEPOSIT                     isCooled, isHeated, cAmount, hAmount {from, msg.value}
+    tx = gwin_protocol.depositToTranche(0, True, True, Web3.toWei(1, "ether"), Web3.toWei(1, "ether"), {"from": account, "value": Web3.toWei(2, "ether")})
+
+    # Assert
+    assert gwin_protocol.retrieveProtocolCEthBalance.call(0, {"from": account}) == 1000000000000000000 # cEth in protocol
+    assert gwin_protocol.retrieveProtocolHEthBalance.call(0, {"from": account}) == 1000000000000000000 # hEth in protocol
+    assert gwin_protocol.retrieveCEthPercentBalance.call(0, account.address, {"from": account}) == 1000000000000 # cEth % for account
+    assert gwin_protocol.retrieveHEthPercentBalance.call(0, account.address, {"from": account}) == 1000000000000 # hEth % for account
+    assert gwin_protocol.retrieveCEthBalance.call(0, account.address, {"from": account}) == 1000000000000000000 # cEth for account
+    assert gwin_protocol.retrieveHEthBalance.call(0, account.address, {"from": account}) == 1000000000000000000 # hEth for account
+    assert gwin_protocol.retrieveCurrentPrice(0, {"from": account}) == 900_00000000
+
+    # Clean Up
+    empty_account(gwin_protocol, account)
+    empty_account(gwin_protocol, non_owner)
+
+    # Ensure dust is less that $0.01
+    assert rounded(gwin_protocol.retrieveEthInContract({"from": account})) < 9000000000000 # total in protocol
 
 def test_both_pools_have_balances_heated_zeroed():
     # Heated is positive and Cooled is zero
@@ -2533,3 +2679,82 @@ def test_cooled_deposit_to_parent():
     assert gwin_protocol.retrieveHEthPercentBalance.call(pool_2x_id, account.address, {"from": account}) == 0 # hEth % for account
     assert gwin_protocol.retrieveCEthBalance.call(pool_2x_id, account.address, {"from": account}) == 0 # cEth for account
     assert gwin_protocol.retrieveHEthBalance.call(pool_2x_id, account.address, {"from": account}) == 0 # hEth for account
+
+def test_get_derived_price_rejects_too_many_decimals():
+    # Arrange
+    usdDecimalsUint = 20 # The protocol base decimals in uint form
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    account = get_account() # Protocol 
+    gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+    test_price_feed = get_contract("test_price_feed")
+    # Act / Assert - does revert
+    with brownie.reverts("Invalid_decimals"):
+        gwin_protocol.getDerivedPrice(eth_usd_price_feed.address, test_price_feed.address, usdDecimalsUint)
+
+def test_get_derived_price_rejects_zero_decimals():
+    # Arrange
+    usdDecimalsUint = 0 # The protocol base decimals in uint form
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    account = get_account() # Protocol 
+    gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+    test_price_feed = get_contract("test_price_feed")
+    # Act / Assert - does revert
+    with brownie.reverts("Invalid_decimals"):
+        gwin_protocol.getDerivedPrice(eth_usd_price_feed.address, test_price_feed.address, usdDecimalsUint)
+
+def test_get_derived_price_accepts_proper_decimals():
+    # Arrange
+    usdDecimalsUint = 8 # The protocol base decimals in uint form
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    account = get_account() # Protocol 
+    gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+    test_price_feed = get_contract("test_price_feed")
+    # Act / Assert 
+    assert gwin_protocol.getDerivedPrice(eth_usd_price_feed.address, xau_usd_price_feed.address, usdDecimalsUint) == 62500000
+
+def test_retrieve_current_price_with_feed_decimals_greater_than_usd_decimals():
+    # Arrange
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    test_price_feed = get_contract("test_price_feed")
+    account = get_account()
+    parent_id = 0
+    pool_id = 0
+    tx = gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+    tx = gwin_protocol.initializePool(0, parent_id, eth_usd_price_feed.address, "0x455448", test_price_feed.address, "0x544553542f555344", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+    # Act / Assert 
+    assert gwin_protocol.retrieveCurrentPrice(pool_id) == 1_00000000
+    # Clean Up
+    empty_account(gwin_protocol, account)
+
+    assert rounded(gwin_protocol.retrieveEthInContract({"from": account})) == 0 # total in protocol
+
+def test_retrieve_current_price_with_feed_decimals_less_than_usd_decimals():
+    # Arrange
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    account = get_account()
+    parent_id = 0
+    pool_id = 0
+    tx = gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+    tx = gwin_protocol.initializePool(0, parent_id, eth_usd_price_feed.address, "0x455448", btc_usd_price_feed.address, "0x4254432f555344", -50_0000000000, 50_0000000000, {"from": account, "value": Web3.toWei(20, "ether")})
+    # Act / Assert 
+    assert gwin_protocol.retrieveCurrentPrice(pool_id) == 6250000
+    # Clean Up
+    empty_account(gwin_protocol, account)
+
+    assert rounded(gwin_protocol.retrieveEthInContract({"from": account})) == 0 # total in protocol
+
+def test_retrieve_current_price_on_non_initialized_pool_reverts():
+    # Arrange
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing!")
+    account = get_account() # Protocol
+    pool_id = 100
+    gwin_protocol, gwin_ERC20, eth_usd_price_feed, xau_usd_price_feed, btc_usd_price_feed, jpy_usd_price_feed = deploy_gwin_protocol_and_gwin_token()
+    # Act / Assert - does revert
+    with brownie.reverts("Pool_Is_Not_Initialized"):
+        gwin_protocol.retrieveCurrentPrice(pool_id)

@@ -37,6 +37,7 @@ contract_to_mock = {
     "xau_usd_price_feed": MockV3Aggregator,
     "btc_usd_price_feed": MockV3Aggregator,
     "jpy_usd_price_feed": MockV3Aggregator,
+    "test_price_feed": MockV3Aggregator,
     "oracle": MockOracle,
 }
 
@@ -45,6 +46,7 @@ contract_decimals = {
     "xau_usd_price_feed": 18,
     "btc_usd_price_feed": 8,
     "jpy_usd_price_feed": 18,
+    "test_price_feed": 16,
 }
 
 contract_initial_value = {
@@ -52,6 +54,7 @@ contract_initial_value = {
     "xau_usd_price_feed": 1600_000000000000000000,
     "btc_usd_price_feed": 16000_00000000,
     "jpy_usd_price_feed": 7000000000000000,
+    "test_price_feed": 1000_0000000000000000,
 }
 
 DECIMALS = 18

@@ -246,7 +246,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
                 // add to parent balance
                 parentPoolBal[parentId].hEthBal += msg.value;
             }
-        } else if (_isCooled == true && _isHeated == true) {
+        } else {
             pool[_poolId].cEthBal += _cAmount;
             if (parentPoolId[_poolId] != 0) {
                 // add to parent balance
@@ -465,7 +465,7 @@ contract GwinProtocol is Ownable, ReentrancyGuard {
         // use two price feeds to derive a new feed
         require(
             _decimals > uint8(0) && _decimals <= uint8(18),
-            "Invalid _decimals"
+            "Invalid_decimals"
         );
         int256 feedDecimals = int256(10**uint256(_decimals));
         (, int256 basePrice, , , ) = AggregatorV3Interface(_base)
