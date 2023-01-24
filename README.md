@@ -265,6 +265,35 @@ Price feeds will be determined by the established Goerli addresses, so no need t
 
 ## Testing with Ganache
 
+### Run All Tests
+
+Run every test in the tests folder and see the coverage report.
+
+Run the test with:
+
+```bash
+brownie test --coverage --network ganache
+```
+
+### Coverage Report for Critical Functions
+
+```
+GwinProtocol.abs - 100.0%
+GwinProtocol.cEthNeededForPools - 100.0%
+GwinProtocol.interactByPool - 100.0%
+GwinProtocol.liquidateIfZero - 100.0%
+GwinProtocol.reAdjust - 98.2%
+GwinProtocol.withdrawFromTranche - 97.1%
+GwinProtocol.reAdjustChildPools - 95.8%
+GwinProtocol.trancheSpecificCalcs - 95.0%
+GwinProtocol.depositToTranche - 91.1%
+GwinProtocol.interact - 90.3%
+GwinProtocol.bothPoolsHaveBalance - 87.5%
+GwinProtocol.initializePool - 86.1%
+```
+
+> Note: You may need to clear the build folder between deployments and testing, particulary when you restart ganache or change networks. You can safely delete the build folder so that the proper contract is referenced.
+
 ### Unit Tests
 
 Unit tests include tests for:
